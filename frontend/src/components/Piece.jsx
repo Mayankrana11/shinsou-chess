@@ -1,14 +1,28 @@
 const pieceMap = {
-  P: "♙", R: "♖", N: "♘", B: "♗", Q: "♕", K: "♔",
-  p: "♟", r: "♜", n: "♞", b: "♝", q: "♛", k: "♚",
+  P: "wP",
+  R: "wR",
+  N: "wN",
+  B: "wB",
+  Q: "wQ",
+  K: "wK",
+
+  p: "bP",
+  r: "bR",
+  n: "bN",
+  b: "bB",
+  q: "bQ",
+  k: "bK",
 };
 
 export default function Piece({ type }) {
-  const isWhite = type === type.toUpperCase();
+  const src = `/pieces/${pieceMap[type]}.svg`;
 
   return (
-    <span className={`piece ${isWhite ? "white-piece" : "black-piece"}`}>
-      {pieceMap[type]}
-    </span>
+    <img
+      src={src}
+      alt={type}
+      className="piece-img"
+      draggable={false}
+    />
   );
 }
