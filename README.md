@@ -1,0 +1,1 @@
+Shinsou (深層)  “A deeper layer” — is a modular chess engine written in C, paired with a React-based UI, and executed in the browser using WebAssembly (WASM).
