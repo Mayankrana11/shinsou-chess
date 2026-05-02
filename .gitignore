@@ -1,0 +1,59 @@
+# =========================
+# Node  React  Vite
+# =========================
+node_modules
+dist
+build
+.vite
+.log
+
+# Environment variables
+.env
+.env.
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Editor  IDE
+.vscode
+.idea
+.swp
+.swo
+
+# =========================
+# C  Build files
+# =========================
+.o
+.out
+.exe
+.a
+.so
+.dll
+
+# Makefiles (generated)
+Makefile
+cmake-build-
+CMakeFiles
+CMakeCache.txt
+
+# =========================
+# WebAssembly build output
+# =========================
+engine-cwasm.wasm
+engine-cwasm.js
+engine-cwasm.map
+
+# =========================
+# Logs  temp
+# =========================
+.log
+tmp
+temp
+
+# =========================
+# Package locks (optional)
+# =========================
+# Uncomment if you don’t want to track lock files
+# package-lock.json
+# yarn.lock
