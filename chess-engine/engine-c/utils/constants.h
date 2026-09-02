@@ -22,4 +22,16 @@
 #define WHITE 1
 #define BLACK -1
 
+// Castling rights bits
+#define CASTLE_WHITE_KINGSIDE  1
+#define CASTLE_WHITE_QUEENSIDE 2
+#define CASTLE_BLACK_KINGSIDE  4
+#define CASTLE_BLACK_QUEENSIDE 8
+
+// Board coordinates
+#define RANK_1 7
+#define RANK_2 6
+#define RANK_7 1
+#define RANK_8 0
+
 #endif
