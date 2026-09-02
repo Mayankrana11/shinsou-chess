@@ -51,6 +51,9 @@ engine-cwasm.map
 tmp
 temp
 
+#masterp
+/local
+
 # =========================
 # Package locks (optional)
 # =========================
