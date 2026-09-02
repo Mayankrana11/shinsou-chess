@@ -32,7 +32,6 @@ Thumbs.db
 .dll
 
 # Makefiles (generated)
-Makefile
 cmake-build-
 CMakeFiles
 CMakeCache.txt
