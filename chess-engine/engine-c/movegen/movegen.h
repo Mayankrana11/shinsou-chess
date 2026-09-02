@@ -5,6 +5,7 @@
 
 #define MAX_MOVES 256
 
-int generateMoves(Position* pos, Move moves[]);
+int generatePseudoLegalMoves(Position* pos, Move moves[]);
+int generateLegalMoves(Position* pos, Move moves[]);
 
 #endif
