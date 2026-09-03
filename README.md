@@ -2,17 +2,19 @@
 
 Shinsou means "a deeper layer" in Japanese. This project builds a chess engine from first principles with a focus on correctness, testability, and clean architecture.
 
-## Current Status: Steps 1-19 Complete
+## Current Status: Steps 1-22 Complete
 
 The C engine implements:
 
 - Board representation with full game state (side to move, castling rights, en passant, halfmove clock, fullmove number, king positions)
 - Pseudo-legal move generation for all pieces (pawn, knight, bishop, rook, queen, king)
 - Legal move generation with check detection
-- Special moves: castling (kingside and queenside), en passant, promotion (queen, rook, bishop, knight)
+- Special moves with full legality: castling (kingside and queenside), en passant, promotion (queen, rook, bishop, knight)
+- Castling rules: king not in check, does not move through check, does not land in check
+- En passant with discovered check detection
 - Attack detection system (isSquareAttacked, isInCheck)
 - Make and undo move with complete state restoration
-- Comprehensive test suite verifying move generation, make/undo integrity, check detection, and special moves
+- Comprehensive test suite verifying move generation, make/undo integrity, check detection, and special move legality
 
 ## Project Structure
 
@@ -62,7 +64,7 @@ gcc -Wall -Wextra -Wpedantic -std=c11 -I. -o shinsou.exe board/board.c movegen/m
 ./shinsou.exe
 ```
 
-Expected output shows 20 legal moves from the starting position, make/undo test passing, and special move tests for check, castling, en passant, and promotion.
+Expected output shows 20 legal moves from the starting position, make/undo test passing, and special move tests for check, castling (through check, into check, king in check), en passant (discovered check, legal), and promotion make/undo.
 
 ## Completed Phases
 
@@ -92,12 +94,12 @@ Expected output shows 20 legal moves from the starting position, make/undo test 
 - undoMove restores exact position state
 - Verified with make/undo round-trip test
 
-## Next Steps (Steps 20-30)
-
 ### Phase 6 - Special Rules (Steps 20-22)
-- Castling legality (king not in check, not through check, squares empty)
-- En passant legality (discovered check handling)
-- Promotion handling (already generated, needs make/undo integration)
+- Castling with full legality (king not in check, not through check, not into check, squares empty)
+- En passant with discovered check handling
+- Promotion (queen, rook, bishop, knight) with make/undo integration
+
+## Next Steps (Steps 23-30)
 
 ### Phase 7 - Legal Moves (Steps 23-24)
 - Separate pseudo-legal from legal generation (done)
