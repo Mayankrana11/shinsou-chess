@@ -131,19 +131,29 @@ int generatePseudoLegalMoves(Position* pos, Move moves[]) {
                     }
                 }
 
-                if (side == WHITE && kingRow == RANK_1 && kingCol == 4) {
+                int enemyColor = (side == WHITE) ? BLACK : WHITE;
+                if (isInCheck(pos, side)) {
+                } else if (side == WHITE && kingRow == RANK_1 && kingCol == 4) {
                     if ((rights & CASTLE_WHITE_KINGSIDE) && pos->board[RANK_1][5] == EMPTY && pos->board[RANK_1][6] == EMPTY) {
-                        addMove(moves, &count, RANK_1, 4, RANK_1, 6, WKING, EMPTY, 0, MOVE_CASTLE_KINGSIDE);
+                        if (!isSquareAttacked(pos, RANK_1, 5, enemyColor) && !isSquareAttacked(pos, RANK_1, 6, enemyColor)) {
+                            addMove(moves, &count, RANK_1, 4, RANK_1, 6, WKING, EMPTY, 0, MOVE_CASTLE_KINGSIDE);
+                        }
                     }
                     if ((rights & CASTLE_WHITE_QUEENSIDE) && pos->board[RANK_1][3] == EMPTY && pos->board[RANK_1][2] == EMPTY && pos->board[RANK_1][1] == EMPTY) {
-                        addMove(moves, &count, RANK_1, 4, RANK_1, 2, WKING, EMPTY, 0, MOVE_CASTLE_QUEENSIDE);
+                        if (!isSquareAttacked(pos, RANK_1, 3, enemyColor) && !isSquareAttacked(pos, RANK_1, 2, enemyColor)) {
+                            addMove(moves, &count, RANK_1, 4, RANK_1, 2, WKING, EMPTY, 0, MOVE_CASTLE_QUEENSIDE);
+                        }
                     }
                 } else if (side == BLACK && kingRow == RANK_8 && kingCol == 4) {
                     if ((rights & CASTLE_BLACK_KINGSIDE) && pos->board[RANK_8][5] == EMPTY && pos->board[RANK_8][6] == EMPTY) {
-                        addMove(moves, &count, RANK_8, 4, RANK_8, 6, BKING, EMPTY, 0, MOVE_CASTLE_KINGSIDE);
+                        if (!isSquareAttacked(pos, RANK_8, 5, enemyColor) && !isSquareAttacked(pos, RANK_8, 6, enemyColor)) {
+                            addMove(moves, &count, RANK_8, 4, RANK_8, 6, BKING, EMPTY, 0, MOVE_CASTLE_KINGSIDE);
+                        }
                     }
                     if ((rights & CASTLE_BLACK_QUEENSIDE) && pos->board[RANK_8][3] == EMPTY && pos->board[RANK_8][2] == EMPTY && pos->board[RANK_8][1] == EMPTY) {
-                        addMove(moves, &count, RANK_8, 4, RANK_8, 2, BKING, EMPTY, 0, MOVE_CASTLE_QUEENSIDE);
+                        if (!isSquareAttacked(pos, RANK_8, 3, enemyColor) && !isSquareAttacked(pos, RANK_8, 2, enemyColor)) {
+                            addMove(moves, &count, RANK_8, 4, RANK_8, 2, BKING, EMPTY, 0, MOVE_CASTLE_QUEENSIDE);
+                        }
                     }
                 }
             }
