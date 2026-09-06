@@ -328,6 +328,157 @@ void testPromotionMakeUndo() {
     }
 }
 
+void testPinnedPiece() {
+    printf("\n--- Pinned Piece Test ---\n");
+    Position pos;
+    clearBoard(&pos);
+    pos.sideToMove = WHITE;
+    pos.whiteKingRow = 7; pos.whiteKingCol = 4;
+    pos.blackKingRow = 0; pos.blackKingCol = 4;
+    pos.board[7][4] = WKING;
+    pos.board[0][4] = BKING;
+    pos.board[6][4] = WPAWN;
+    pos.board[4][4] = BROOK;
+
+    printBoard(&pos);
+    Move moves[MAX_MOVES];
+    int count = generateLegalMoves(&pos, moves);
+    printf("Legal moves: %d\n", count);
+    int pawnCanMove = 0;
+    int pawnCanCapture = 0;
+    for (int i = 0; i < count; i++) {
+        if (moves[i].fromRow == 6 && moves[i].fromCol == 4) {
+            if (moves[i].toRow == 5 && moves[i].toCol == 4) pawnCanMove = 1;
+            if (moves[i].toRow == 5 && (moves[i].toCol == 3 || moves[i].toCol == 5)) pawnCanCapture = 1;
+        }
+    }
+    printf("Pawn can move forward: %s (expected: YES - moving along pin line)\n", pawnCanMove ? "YES" : "NO");
+    printf("Pawn can capture diagonally: %s (expected: NO - would expose king)\n", pawnCanCapture ? "YES" : "NO");
+}
+
+void testDiscoveredCheck() {
+    printf("\n--- Discovered Check Test ---\n");
+    Position pos;
+    clearBoard(&pos);
+    pos.sideToMove = WHITE;
+    pos.whiteKingRow = 7; pos.whiteKingCol = 4;
+    pos.blackKingRow = 0; pos.blackKingCol = 4;
+    pos.board[7][4] = WKING;
+    pos.board[0][4] = BKING;
+    pos.board[6][4] = WROOK;
+    pos.board[1][4] = BPAWN;
+
+    printBoard(&pos);
+    Move moves[MAX_MOVES];
+    int count = generateLegalMoves(&pos, moves);
+    printf("Legal moves: %d\n", count);
+    int rookMoves = 0;
+    for (int i = 0; i < count; i++) {
+        if (moves[i].fromRow == 6 && moves[i].fromCol == 4) {
+            rookMoves++;
+        }
+    }
+    printf("Rook legal moves: %d (expected: > 0, moving gives discovered check)\n", rookMoves);
+    int givesCheck = 0;
+    for (int i = 0; i < count; i++) {
+        if (moves[i].fromRow == 6 && moves[i].fromCol == 4) {
+            makeMove(&pos, &moves[i]);
+            if (isInCheck(&pos, BLACK)) {
+                givesCheck = 1;
+                printf("Move to (%d,%d) gives discovered check\n", moves[i].toRow, moves[i].toCol);
+            }
+            undoMove(&pos, &moves[i]);
+        }
+    }
+    printf("At least one move gives discovered check: %s\n", givesCheck ? "YES" : "NO");
+}
+
+void testDoubleCheck() {
+    printf("\n--- Double Check Test ---\n");
+    Position pos;
+    clearBoard(&pos);
+    pos.sideToMove = BLACK;
+    pos.whiteKingRow = 0; pos.whiteKingCol = 4;
+    pos.blackKingRow = 7; pos.blackKingCol = 4;
+    pos.board[0][4] = WKING;
+    pos.board[7][4] = BKING;
+    pos.board[2][4] = WROOK;
+    pos.board[1][3] = WBISHOP;
+
+    printBoard(&pos);
+    printf("Black in check: %s (expected: YES - double check)\n", isInCheck(&pos, BLACK) ? "YES" : "NO");
+    Move moves[MAX_MOVES];
+    int count = generateLegalMoves(&pos, moves);
+    printf("Black legal moves: %d\n", count);
+    int kingMoves = 0;
+    for (int i = 0; i < count; i++) {
+        if (moves[i].piece == BKING) kingMoves++;
+    }
+    printf("King moves: %d (expected: only king moves, cannot block double check)\n", kingMoves);
+    int canBlock = 0;
+    for (int i = 0; i < count; i++) {
+        if (moves[i].piece != BKING) {
+            canBlock = 1;
+        }
+    }
+    printf("Can block/capture: %s (expected: NO - double check)\n", canBlock ? "YES" : "NO");
+}
+
+void testPinnedKnight() {
+    printf("\n--- Pinned Knight Test ---\n");
+    Position pos;
+    clearBoard(&pos);
+    pos.sideToMove = WHITE;
+    pos.whiteKingRow = 7; pos.whiteKingCol = 4;
+    pos.blackKingRow = 0; pos.blackKingCol = 4;
+    pos.board[7][4] = WKING;
+    pos.board[0][4] = BKING;
+    pos.board[5][4] = WKNIGHT;
+    pos.board[3][4] = BROOK;
+
+    printBoard(&pos);
+    Move moves[MAX_MOVES];
+    int count = generateLegalMoves(&pos, moves);
+    printf("Legal moves: %d\n", count);
+    int knightMoves = 0;
+    for (int i = 0; i < count; i++) {
+        if (moves[i].fromRow == 5 && moves[i].fromCol == 4) {
+            knightMoves++;
+        }
+    }
+    printf("Knight legal moves: %d (expected: 0 - pinned to king)\n", knightMoves);
+}
+
+void testPinnedBishopDiagonal() {
+    printf("\n--- Pinned Bishop Diagonal Test ---\n");
+    Position pos;
+    clearBoard(&pos);
+    pos.sideToMove = WHITE;
+    pos.whiteKingRow = 7; pos.whiteKingCol = 4;
+    pos.blackKingRow = 0; pos.blackKingCol = 4;
+    pos.board[7][4] = WKING;
+    pos.board[0][4] = BKING;
+    pos.board[6][3] = WBISHOP;
+    pos.board[4][5] = BBISHOP;
+
+    printBoard(&pos);
+    Move moves[MAX_MOVES];
+    int count = generateLegalMoves(&pos, moves);
+    printf("Legal moves: %d\n", count);
+    int bishopMoves = 0;
+    for (int i = 0; i < count; i++) {
+        if (moves[i].fromRow == 6 && moves[i].fromCol == 3) {
+            bishopMoves++;
+        }
+    }
+    printf("Bishop legal moves: %d (expected: can move along diagonal pin line)\n", bishopMoves);
+    for (int i = 0; i < count; i++) {
+        if (moves[i].fromRow == 6 && moves[i].fromCol == 3) {
+            printf("  -> (%d,%d)\n", moves[i].toRow, moves[i].toCol);
+        }
+    }
+}
+
 int main() {
     testInitialPosition();
     testCheckDetection();
@@ -340,5 +491,10 @@ int main() {
     testEnPassantDiscoveredCheck();
     testEnPassantLegal();
     testPromotionMakeUndo();
+    testPinnedPiece();
+    testDiscoveredCheck();
+    testDoubleCheck();
+    testPinnedKnight();
+    testPinnedBishopDiagonal();
     return 0;
 }
