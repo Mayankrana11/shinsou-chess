@@ -2,8 +2,6 @@
 
 Shinsou means "a deeper layer" in Japanese. This project builds a chess engine from first principles with a focus on correctness, testability, and clean architecture.
 
-## Current Status: Steps 1-24 Complete
-
 The C engine implements:
 
 - Board representation with full game state (side to move, castling rights, en passant, halfmove clock, fullmove number, king positions)
@@ -99,11 +97,12 @@ Expected output shows 20 legal moves from the starting position, make/undo test 
 - En passant with discovered check handling
 - Promotion (queen, rook, bishop, knight) with make/undo integration
 
-## Next Steps (Steps 23-30)
 
-### Phase 7 - Legal Moves (Steps 23-24) ✓
+### Phase 7 - Legal Moves (Steps 23-24) 
 - Separate pseudo-legal from legal generation
 - Test pinned pieces, discovered checks, double check, castling through check, en passant discovered check
+
+## Next Steps (Steps 25-30)
 
 ### Phase 8 - Checkmate/Stalemate (Steps 25-27)
 - isCheckmate and isStalemate detection
