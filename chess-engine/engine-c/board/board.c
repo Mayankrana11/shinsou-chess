@@ -3,6 +3,7 @@
 
 #include "board.h"
 #include "../utils/constants.h"
+#include "../movegen/movegen.h"
 
 char pieceChar(int p) {
 
@@ -366,4 +367,38 @@ void undoMove(Position* pos, Move* move) {
     pos->halfmoveClock = move->prevHalfmoveClock;
     pos->sideToMove = -pos->sideToMove;
     if (pos->sideToMove == BLACK) pos->fullmoveNumber--;
+}
+
+int isCheckmate(Position* pos) {
+    if (!isInCheck(pos, pos->sideToMove)) {
+        return 0;
+    }
+    Move moves[MAX_MOVES];
+    int legalCount = generateLegalMoves(pos, moves);
+    return legalCount == 0;
+}
+
+int isStalemate(Position* pos) {
+    if (isInCheck(pos, pos->sideToMove)) {
+        return 0;
+    }
+    Move moves[MAX_MOVES];
+    int legalCount = generateLegalMoves(pos, moves);
+    return legalCount == 0;
+}
+
+int isTerminal(Position* pos, int* result) {
+    if (isCheckmate(pos)) {
+        if (result) *result = (pos->sideToMove == WHITE) ? -1 : 1;
+        return 1;
+    }
+    if (isStalemate(pos)) {
+        if (result) *result = 0;
+        return 1;
+    }
+    if (pos->halfmoveClock >= 100) {
+        if (result) *result = 0;
+        return 1;
+    }
+    return 0;
 }

@@ -13,5 +13,8 @@ int getCastlingRights(Position* pos);
 void setCastlingRights(Position* pos, int rights);
 void makeMove(Position* pos, Move* move);
 void undoMove(Position* pos, Move* move);
+int isCheckmate(Position* pos);
+int isStalemate(Position* pos);
+int isTerminal(Position* pos, int* result);
 
 #endif
