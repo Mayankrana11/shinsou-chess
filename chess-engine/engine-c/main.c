@@ -2,6 +2,7 @@
 
 #include "board/board.h"
 #include "movegen/movegen.h"
+#include "engine/search.h"
 #include "utils/constants.h"
 
 void testInitialPosition() {
@@ -579,6 +580,137 @@ void testFiftyMoveRule() {
     printf("Is terminal (99 halfmoves): %s (expected: NO)\n", isTerm ? "YES" : "NO");
 }
 
+void testPerft() {
+    printf("\n--- Perft Test (Starting Position) ---\n");
+    Position pos;
+    initBoard(&pos);
+
+    printf("Depth 1: %llu (expected: 20)\n", (unsigned long long)perft(&pos, 1));
+    printf("Depth 2: %llu (expected: 400)\n", (unsigned long long)perft(&pos, 2));
+    printf("Depth 3: %llu (expected: 8902)\n", (unsigned long long)perft(&pos, 3));
+    printf("Depth 4: %llu (expected: 197281)\n", (unsigned long long)perft(&pos, 4));
+    printf("Depth 5: %llu (expected: 4865609)\n", (unsigned long long)perft(&pos, 5));
+}
+
+void testPerftDivide() {
+    printf("\n--- Perft Divide Test (Starting Position, Depth 3) ---\n");
+    Position pos;
+    initBoard(&pos);
+    perftDivide(&pos, 3);
+}
+
+void testPerftKiwipete() {
+    printf("\n--- Perft Test (Kiwipete Position) ---\n");
+    Position pos;
+    clearBoard(&pos);
+    pos.sideToMove = WHITE;
+    pos.whiteKingRow = 7; pos.whiteKingCol = 4;
+    pos.blackKingRow = 0; pos.blackKingCol = 4;
+    
+    // r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1
+    // Rank 8 (row 0): r 3 k 2 r -> r . . . k . . r
+    pos.board[0][0] = BROOK;
+    pos.board[0][4] = BKING;
+    pos.board[0][7] = BROOK;
+    // Rank 7 (row 1): p 1 p p q p b 1 -> p . p p q p b .
+    pos.board[1][0] = BPAWN;
+    pos.board[1][2] = BPAWN;
+    pos.board[1][3] = BPAWN;
+    pos.board[1][4] = BQUEEN;
+    pos.board[1][5] = BPAWN;
+    pos.board[1][6] = BBISHOP;
+    // Rank 6 (row 2): b n 2 p n p 1 -> b n . . p n p .
+    pos.board[2][0] = BBISHOP;
+    pos.board[2][1] = BKNIGHT;
+    pos.board[2][4] = BPAWN;
+    pos.board[2][5] = BKNIGHT;
+    pos.board[2][6] = BPAWN;
+    // Rank 5 (row 3): 3 P N 3 -> . . . P N . . .
+    pos.board[3][3] = WPAWN;
+    pos.board[3][4] = WKNIGHT;
+    // Rank 4 (row 4): 1 p 2 P 3 -> . p . . P . . .
+    pos.board[4][1] = BPAWN;
+    pos.board[4][4] = WPAWN;
+    // Rank 3 (row 5): 2 N 2 Q 1 p -> . . N . . Q . p
+    pos.board[5][2] = WKNIGHT;
+    pos.board[5][5] = WQUEEN;
+    pos.board[5][7] = BPAWN;
+    // Rank 2 (row 6): P P P B B P P P -> P P P B B P P P
+    pos.board[6][0] = WPAWN;
+    pos.board[6][1] = WPAWN;
+    pos.board[6][2] = WPAWN;
+    pos.board[6][3] = WBISHOP;
+    pos.board[6][4] = WBISHOP;
+    pos.board[6][5] = WPAWN;
+    pos.board[6][6] = WPAWN;
+    pos.board[6][7] = WPAWN;
+    // Rank 1 (row 7): R 3 K 2 R -> R . . . K . . R
+    pos.board[7][0] = WROOK;
+    pos.board[7][4] = WKING;
+    pos.board[7][7] = WROOK;
+
+    pos.whiteKingMoved = 0;
+    pos.whiteLeftRookMoved = 0;
+    pos.whiteRightRookMoved = 0;
+    pos.blackKingMoved = 0;
+    pos.blackLeftRookMoved = 0;
+    pos.blackRightRookMoved = 0;
+    pos.halfmoveClock = 0;
+    pos.fullmoveNumber = 1;
+    pos.enPassantRow = -1;
+    pos.enPassantCol = -1;
+
+    printf("Depth 1: %llu (expected: 48)\n", (unsigned long long)perft(&pos, 1));
+    printf("Depth 2: %llu (expected: 2039)\n", (unsigned long long)perft(&pos, 2));
+    printf("Depth 3: %llu (expected: 97862)\n", (unsigned long long)perft(&pos, 3));
+    printf("Depth 4: %llu (expected: 4085603)\n", (unsigned long long)perft(&pos, 4));
+}
+
+void testPerftPosition3() {
+    printf("\n--- Perft Test (Position 3: Promotions/Castling/En Passant) ---\n");
+    Position pos;
+    clearBoard(&pos);
+    pos.sideToMove = WHITE;
+    pos.whiteKingRow = 4; pos.whiteKingCol = 0;
+    pos.blackKingRow = 3; pos.blackKingCol = 6;
+    
+    // 8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - - 0 1
+    // Rank 8 (row 0): 8 -> all empty
+    // Rank 7 (row 1): 2p5 -> . . p . . . . .
+    pos.board[1][2] = BPAWN;
+    // Rank 6 (row 2): 3p4 -> . . . p . . . .
+    pos.board[2][3] = BPAWN;
+    // Rank 5 (row 3): KP5r -> K P . . . . . r
+    pos.board[3][0] = WKING;
+    pos.board[3][1] = WPAWN;
+    pos.board[3][7] = BROOK;
+    // Rank 4 (row 4): 1R3p1k -> . R . . . p . k
+    pos.board[4][1] = WROOK;
+    pos.board[4][5] = BPAWN;
+    pos.board[4][7] = BKING;
+    // Rank 3 (row 5): 8 -> all empty
+    // Rank 2 (row 6): 4P1P1 -> . . . . P . P .
+    pos.board[6][4] = WPAWN;
+    pos.board[6][6] = WPAWN;
+    // Rank 1 (row 7): 8 -> all empty
+
+    pos.whiteKingMoved = 1;
+    pos.whiteLeftRookMoved = 1;
+    pos.whiteRightRookMoved = 1;
+    pos.blackKingMoved = 1;
+    pos.blackLeftRookMoved = 1;
+    pos.blackRightRookMoved = 1;
+    pos.halfmoveClock = 0;
+    pos.fullmoveNumber = 1;
+    pos.enPassantRow = -1;
+    pos.enPassantCol = -1;
+
+    printf("Depth 1: %llu (expected: 14)\n", (unsigned long long)perft(&pos, 1));
+    printf("Depth 2: %llu (expected: 191)\n", (unsigned long long)perft(&pos, 2));
+    printf("Depth 3: %llu (expected: 2812)\n", (unsigned long long)perft(&pos, 3));
+    printf("Depth 4: %llu (expected: 43238)\n", (unsigned long long)perft(&pos, 4));
+}
+
 int main() {
     testInitialPosition();
     testCheckDetection();
@@ -600,5 +732,9 @@ int main() {
     testStalemate();
     testTerminalState();
     testFiftyMoveRule();
+    testPerft();
+    testPerftDivide();
+    testPerftKiwipete();
+    testPerftPosition3();
     return 0;
 }

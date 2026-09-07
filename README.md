@@ -107,12 +107,13 @@ Expected output shows 20 legal moves from the starting position, make/undo test 
 - isCheckmate and isStalemate detection
 - Terminal state handling
 
-## Next Steps (Steps 28-30)
 
 ### Phase 9 - Perft (Steps 28-30)
 - perft(depth) node counting
 - perft divide for debugging
 - Validation against known positions
+
+## Next Steps (Steps 31-33)
 
 ### Phase 10 - FEN (Steps 31-33)
 - FEN parsing and generation
