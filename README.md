@@ -102,11 +102,12 @@ Expected output shows 20 legal moves from the starting position, make/undo test 
 - Separate pseudo-legal from legal generation
 - Test pinned pieces, discovered checks, double check, castling through check, en passant discovered check
 
-## Next Steps (Steps 25-30)
 
 ### Phase 8 - Checkmate/Stalemate (Steps 25-27)
 - isCheckmate and isStalemate detection
 - Terminal state handling
+
+## Next Steps (Steps 28-30)
 
 ### Phase 9 - Perft (Steps 28-30)
 - perft(depth) node counting

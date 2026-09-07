@@ -479,6 +479,106 @@ void testPinnedBishopDiagonal() {
     }
 }
 
+void testCheckmate() {
+    printf("\n--- Checkmate Test ---\n");
+    Position pos;
+    clearBoard(&pos);
+    pos.sideToMove = BLACK;
+    pos.whiteKingRow = 1; pos.whiteKingCol = 2;
+    pos.blackKingRow = 0; pos.blackKingCol = 0;
+    pos.board[1][2] = WKING;
+    pos.board[0][0] = BKING;
+    pos.board[2][0] = WQUEEN;
+
+    printBoard(&pos);
+    printf("Black in check: %s\n", isInCheck(&pos, BLACK) ? "YES" : "NO");
+    printf("Is checkmate: %s (expected: YES)\n", isCheckmate(&pos) ? "YES" : "NO");
+    Move moves[MAX_MOVES];
+    int count = generateLegalMoves(&pos, moves);
+    printf("Black legal moves: %d (expected: 0)\n", count);
+    for (int i = 0; i < count; i++) {
+        printf("  Legal move: (%d,%d) -> (%d,%d)\n", 
+            moves[i].fromRow, moves[i].fromCol, moves[i].toRow, moves[i].toCol);
+    }
+}
+
+void testStalemate() {
+    printf("\n--- Stalemate Test ---\n");
+    Position pos;
+    clearBoard(&pos);
+    pos.sideToMove = BLACK;
+    pos.whiteKingRow = 2; pos.whiteKingCol = 2;
+    pos.blackKingRow = 0; pos.blackKingCol = 0;
+    pos.board[2][2] = WKING;
+    pos.board[0][0] = BKING;
+    pos.board[1][2] = WQUEEN;
+
+    printBoard(&pos);
+    printf("Black in check: %s\n", isInCheck(&pos, BLACK) ? "YES" : "NO");
+    printf("Is stalemate: %s (expected: YES)\n", isStalemate(&pos) ? "YES" : "NO");
+    Move moves[MAX_MOVES];
+    int count = generateLegalMoves(&pos, moves);
+    printf("Black legal moves: %d (expected: 0)\n", count);
+}
+
+void testTerminalState() {
+    printf("\n--- Terminal State Test ---\n");
+    Position pos;
+    clearBoard(&pos);
+    pos.sideToMove = BLACK;
+    pos.whiteKingRow = 1; pos.whiteKingCol = 2;
+    pos.blackKingRow = 0; pos.blackKingCol = 0;
+    pos.board[1][2] = WKING;
+    pos.board[0][0] = BKING;
+    pos.board[2][0] = WQUEEN;
+
+    printBoard(&pos);
+    int result;
+    int isTerm = isTerminal(&pos, &result);
+    printf("Is terminal: %s (expected: YES)\n", isTerm ? "YES" : "NO");
+    printf("Result: %d (expected: 1 for white win)\n", result);
+
+    clearBoard(&pos);
+    pos.sideToMove = BLACK;
+    pos.whiteKingRow = 2; pos.whiteKingCol = 2;
+    pos.blackKingRow = 0; pos.blackKingCol = 0;
+    pos.board[2][2] = WKING;
+    pos.board[0][0] = BKING;
+    pos.board[1][2] = WQUEEN;
+
+    printBoard(&pos);
+    isTerm = isTerminal(&pos, &result);
+    printf("Is terminal: %s (expected: YES)\n", isTerm ? "YES" : "NO");
+    printf("Result: %d (expected: 0 for draw)\n", result);
+
+    clearBoard(&pos);
+    initBoard(&pos);
+    isTerm = isTerminal(&pos, &result);
+    printf("Starting position - Is terminal: %s (expected: NO)\n", isTerm ? "YES" : "NO");
+}
+
+void testFiftyMoveRule() {
+    printf("\n--- 50-Move Rule Test ---\n");
+    Position pos;
+    clearBoard(&pos);
+    pos.sideToMove = WHITE;
+    pos.whiteKingRow = 7; pos.whiteKingCol = 4;
+    pos.blackKingRow = 0; pos.blackKingCol = 4;
+    pos.board[7][4] = WKING;
+    pos.board[0][4] = BKING;
+    pos.halfmoveClock = 100;
+
+    printBoard(&pos);
+    int result;
+    int isTerm = isTerminal(&pos, &result);
+    printf("Is terminal (100 halfmoves): %s (expected: YES)\n", isTerm ? "YES" : "NO");
+    printf("Result: %d (expected: 0 for draw)\n", result);
+
+    pos.halfmoveClock = 99;
+    isTerm = isTerminal(&pos, &result);
+    printf("Is terminal (99 halfmoves): %s (expected: NO)\n", isTerm ? "YES" : "NO");
+}
+
 int main() {
     testInitialPosition();
     testCheckDetection();
@@ -496,5 +596,9 @@ int main() {
     testDoubleCheck();
     testPinnedKnight();
     testPinnedBishopDiagonal();
+    testCheckmate();
+    testStalemate();
+    testTerminalState();
+    testFiftyMoveRule();
     return 0;
 }
