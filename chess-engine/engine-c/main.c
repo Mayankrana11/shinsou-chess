@@ -298,7 +298,7 @@ void testPromotionMakeUndo() {
 
     Move moves[MAX_MOVES];
     int count = generateLegalMoves(&pos, moves);
-    
+
     int promoIdx = -1;
     for (int i = 0; i < count; i++) {
         if (moves[i].type == MOVE_PROMOTION && moves[i].promotion == WQUEEN) {
@@ -306,14 +306,14 @@ void testPromotionMakeUndo() {
             break;
         }
     }
-    
+
     if (promoIdx >= 0) {
         Position original;
         copyPosition(&original, &pos);
         makeMove(&pos, &moves[promoIdx]);
         printf("After promotion: piece at (0,0) = %d (expected: %d)\n", pos.board[0][0], WQUEEN);
         undoMove(&pos, &moves[promoIdx]);
-        
+
         int match = 1;
         for (int r = 0; r < 8; r++) {
             for (int c = 0; c < 8; c++) {
@@ -498,7 +498,7 @@ void testCheckmate() {
     int count = generateLegalMoves(&pos, moves);
     printf("Black legal moves: %d (expected: 0)\n", count);
     for (int i = 0; i < count; i++) {
-        printf("  Legal move: (%d,%d) -> (%d,%d)\n", 
+        printf("  Legal move: (%d,%d) -> (%d,%d)\n",
             moves[i].fromRow, moves[i].fromCol, moves[i].toRow, moves[i].toCol);
     }
 }
@@ -606,7 +606,7 @@ void testPerftKiwipete() {
     pos.sideToMove = WHITE;
     pos.whiteKingRow = 7; pos.whiteKingCol = 4;
     pos.blackKingRow = 0; pos.blackKingCol = 4;
-    
+
     // r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1
     // Rank 8 (row 0): r 3 k 2 r -> r . . . k . . r
     pos.board[0][0] = BROOK;
@@ -673,7 +673,7 @@ void testPerftPosition3() {
     pos.sideToMove = WHITE;
     pos.whiteKingRow = 4; pos.whiteKingCol = 0;
     pos.blackKingRow = 3; pos.blackKingCol = 6;
-    
+
     // 8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - - 0 1
     // Rank 8 (row 0): 8 -> all empty
     // Rank 7 (row 1): 2p5 -> . . p . . . . .

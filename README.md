@@ -32,6 +32,11 @@ shinsou-chess/
 │       │   ├── search.c
 │       │   ├── eval.h
 │       │   └── eval.c
+│       ├── fen/
+│       │   ├── fen.h
+│       │   └── fen.c
+│       ├── tests/
+│       │   └── test_fen.c
 │       ├── utils/
 │       │   ├── types.h
 │       │   └── constants.h
@@ -113,11 +118,12 @@ Expected output shows 20 legal moves from the starting position, make/undo test 
 - perft divide for debugging
 - Validation against known positions
 
-## Next Steps (Steps 31-33)
 
 ### Phase 10 - FEN (Steps 31-33)
 - FEN parsing and generation
 - All six fields support
+
+## Next Steps (Steps 34-36)
 
 ### Phase 11 - Evaluation (Steps 34-36)
 - Material evaluation
