@@ -8,17 +8,12 @@
 void test_capture_search() {
     printf("Testing Capture Search...\n");
     Position pos;
-    // White to move, only legal move is to capture the black queen
-    // 8/8/8/8/8/8/8/4K3 w - - 0 1
-    // Put a black queen on d4 and white king on e1
     clearBoard(&pos);
     pos.sideToMove = WHITE;
     pos.board[7][4] = WKING;
     pos.board[3][3] = BQUEEN;
     pos.whiteKingRow = 7; pos.whiteKingCol = 4;
-    pos.blackKingRow = 0; pos.blackKingCol = 0; // dummy
-
-    // Need a white piece to capture it. Put a white rook on d1
+    pos.blackKingRow = 0; pos.blackKingCol = 0;
     pos.board[7][3] = WROOK;
 
     Move bestMove;
@@ -32,9 +27,6 @@ void test_capture_search() {
 void test_mate_in_one() {
     printf("\nTesting Mate in One...\n");
     Position pos;
-    // Fool's mate variant or simple mate
-    // 4k3/8/8/8/8/8/8/4K3 w - - 0 1
-    // White Queen on a7, Black King on e8.
     clearBoard(&pos);
     pos.sideToMove = WHITE;
     pos.board[0][4] = BKING;
@@ -46,15 +38,44 @@ void test_mate_in_one() {
     findBestMove(&pos, 3, &bestMove);
 
     printf("Best move: (%d,%d) -> (%d,%d)\n", bestMove.fromRow, bestMove.fromCol, bestMove.toRow, bestMove.toCol);
-    // Should move Queen to a8 (0,0) for mate
     assert(bestMove.toRow == 0 && bestMove.toCol == 0);
     printf("Mate in One PASSED\n");
+}
+
+void test_quiescence_horizon() {
+    printf("\nTesting Quiescence Search (Horizon Effect)...\n");
+    Position pos;
+    clearBoard(&pos);
+    pos.sideToMove = WHITE;
+    pos.board[7][4] = WKING;
+    pos.board[0][4] = BKING;
+
+    // White Queen on d1, Black Queen on d2
+    pos.board[7][3] = WQUEEN;
+    pos.board[6][3] = BQUEEN;
+
+    pos.whiteKingRow = 7; pos.whiteKingCol = 4;
+    pos.blackKingRow = 0; pos.blackKingCol = 4;
+
+    // Add another black piece to capture white queen
+    pos.board[7][2] = BROOK; // Rook on c1
+
+    Move bestMove;
+    int score = findBestMove(&pos, 1, &bestMove);
+
+    printf("Depth 1 score: %d\n", score);
+    printf("Best move: (%d,%d) -> (%d,%d)\n", bestMove.fromRow, bestMove.fromCol, bestMove.toRow, bestMove.toCol);
+
+    // The score should not be a massive +900 because quiescence sees the recapture.
+    assert(score < 500);
+    printf("Quiescence Horizon Test PASSED\n");
 }
 
 int main() {
     printf("Running Search Tests...\n");
     test_capture_search();
     test_mate_in_one();
+    test_quiescence_horizon();
     printf("\nAll Search Tests Passed!\n");
     return 0;
 }

@@ -136,10 +136,11 @@ Expected output shows 20 legal moves from the starting position, make/undo test 
 - Alpha-beta pruning
 - Terminal conditions
 
-## Next Steps (Steps 41)
 
 ### Phase 13 - Quiescence (Step 41)
 - Capture and promotion search at depth 0
+
+## Next Steps (Steps 42-45)
 
 ### Phase 14 - Move Ordering (Steps 42-45)
 - MVV-LVA
