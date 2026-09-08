@@ -123,12 +123,13 @@ Expected output shows 20 legal moves from the starting position, make/undo test 
 - FEN parsing and generation
 - All six fields support
 
-## Next Steps (Steps 34-36)
 
 ### Phase 11 - Evaluation (Steps 34-36)
 - Material evaluation
 - Piece-square tables
 - Positional factors
+
+## Next Steps (Steps 37-40)
 
 ### Phase 12 - Search (Steps 37-40)
 - Negamax
