@@ -177,3 +177,21 @@ int generateLegalMoves(Position* pos, Move moves[]) {
     }
     return legalCount;
 }
+
+int generateTacticalMoves(Position* pos, Move moves[]) {
+    Move pseudoMoves[MAX_MOVES];
+    int pseudoCount = generatePseudoLegalMoves(pos, pseudoMoves);
+    int tacticalCount = 0;
+
+    for (int i = 0; i < pseudoCount; i++) {
+        Move* m = &pseudoMoves[i];
+        if (m->captured != EMPTY || m->type == MOVE_PROMOTION) {
+            makeMove(pos, m);
+            if (!isInCheck(pos, pos->sideToMove == WHITE ? BLACK : WHITE)) {
+                moves[tacticalCount++] = *m;
+            }
+            undoMove(pos, m);
+        }
+    }
+    return tacticalCount;
+}

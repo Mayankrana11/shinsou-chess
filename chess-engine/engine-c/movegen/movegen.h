@@ -7,5 +7,6 @@
 
 int generatePseudoLegalMoves(Position* pos, Move moves[]);
 int generateLegalMoves(Position* pos, Move moves[]);
+int generateTacticalMoves(Position* pos, Move moves[]);
 
 #endif
