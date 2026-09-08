@@ -25,8 +25,17 @@ test_eval: $(CORE_SRC) tests/test_eval.c
 run_eval: test_eval
 	./tests/test_eval.exe
 
+# Test binary for search
+test_search: $(CORE_SRC) tests/test_search.c
+	$(CC) $(CFLAGS) -o tests/test_search.exe $(CORE_SRC) tests/test_search.c
+
+# Run search tests
+run_search: test_search
+	./tests/test_search.exe
+
 clean:
 	del $(TARGET)
 	del tests/test_eval.exe
+	del tests/test_search.exe
 
 .PHONY: all clean test_eval run_eval

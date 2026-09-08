@@ -129,13 +129,14 @@ Expected output shows 20 legal moves from the starting position, make/undo test 
 - Piece-square tables
 - Positional factors
 
-## Next Steps (Steps 37-40)
 
 ### Phase 12 - Search (Steps 37-40)
 - Negamax
 - Fixed-depth search
 - Alpha-beta pruning
 - Terminal conditions
+
+## Next Steps (Steps 41)
 
 ### Phase 13 - Quiescence (Step 41)
 - Capture and promotion search at depth 0
