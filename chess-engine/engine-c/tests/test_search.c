@@ -11,9 +11,10 @@ void test_capture_search() {
     clearBoard(&pos);
     pos.sideToMove = WHITE;
     pos.board[7][4] = WKING;
+    pos.board[0][4] = BKING;
     pos.board[3][3] = BQUEEN;
     pos.whiteKingRow = 7; pos.whiteKingCol = 4;
-    pos.blackKingRow = 0; pos.blackKingCol = 0;
+    pos.blackKingRow = 0; pos.blackKingCol = 4;
     pos.board[7][3] = WROOK;
 
     Move bestMove;
@@ -28,17 +29,22 @@ void test_mate_in_one() {
     printf("\nTesting Mate in One...\n");
     Position pos;
     clearBoard(&pos);
+    /* Back rank mate: black king trapped, white rook delivers mate */
     pos.sideToMove = WHITE;
-    pos.board[0][4] = BKING;
-    pos.board[1][0] = WQUEEN;
+    pos.board[0][7] = BKING;
+    pos.board[1][6] = BPAWN;    /* Blocks g7 */
+    pos.board[1][7] = BPAWN;    /* Blocks h7 */
+    pos.board[7][4] = WKING;
+    pos.board[6][0] = WROOK;    /* Rook can go to a8 for mate */
     pos.whiteKingRow = 7; pos.whiteKingCol = 4;
-    pos.blackKingRow = 0; pos.blackKingCol = 4;
+    pos.blackKingRow = 0; pos.blackKingCol = 7;
 
     Move bestMove;
     findBestMove(&pos, 3, &bestMove);
 
     printf("Best move: (%d,%d) -> (%d,%d)\n", bestMove.fromRow, bestMove.fromCol, bestMove.toRow, bestMove.toCol);
-    assert(bestMove.toRow == 0 && bestMove.toCol == 0);
+    /* Rook to back rank (row 0) delivers mate */
+    assert(bestMove.toRow == 0);
     printf("Mate in One PASSED\n");
 }
 
