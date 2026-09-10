@@ -24,6 +24,7 @@ typedef struct {
     int prevEnPassantCol;
     int prevCastlingRights;
     int prevHalfmoveClock;
+    int score;
 } Move;
 
 typedef struct {
