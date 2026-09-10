@@ -31,12 +31,17 @@ shinsou-chess/
 │       │   ├── search.h
 │       │   ├── search.c
 │       │   ├── eval.h
-│       │   └── eval.c
+│       │   ├── eval.c
+│       │   ├── ordering.h
+│       │   └── ordering.c
 │       ├── fen/
 │       │   ├── fen.h
 │       │   └── fen.c
 │       ├── tests/
-│       │   └── test_fen.c
+│       │   ├── test_fen.c
+│       │   ├── test_eval.c
+│       │   ├── test_search.c
+│       │   └── test_ordering.c
 │       ├── utils/
 │       │   ├── types.h
 │       │   └── constants.h
@@ -140,12 +145,15 @@ Expected output shows 20 legal moves from the starting position, make/undo test 
 ### Phase 13 - Quiescence (Step 41)
 - Capture and promotion search at depth 0
 
-## Next Steps (Steps 42-45)
-
 ### Phase 14 - Move Ordering (Steps 42-45)
-- MVV-LVA
-- Killer moves
-- History heuristic
+- MVV-LVA (Most Valuable Victim - Least Valuable Attacker) capture ordering
+- Killer moves (2 slots per ply with FIFO replacement)
+- History heuristic (depth² weighted, capped)
+- Incremental selection sort (pickBestMove) for efficient early cutoffs
+- Quiescence search MVV-LVA ordering
+- Fixed mate-distance scoring (ply-based instead of depth-based)
+
+## Next Steps
 
 ### Phase 15 - Iterative Deepening (Step 46)
 
