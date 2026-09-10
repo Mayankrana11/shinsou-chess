@@ -21,6 +21,7 @@ void addMove(Move moves[], int* count, int fr, int fc, int tr, int tc, int piece
     moves[*count].prevEnPassantCol = -1;
     moves[*count].prevCastlingRights = 0;
     moves[*count].prevHalfmoveClock = 0;
+    moves[*count].score = 0;
     (*count)++;
 }
 
