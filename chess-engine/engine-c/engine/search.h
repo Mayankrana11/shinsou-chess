@@ -19,14 +19,15 @@ void perftDivide(Position* pos, int depth);
 int findBestMove(Position* pos, int depth, Move* bestMove);
 
 /**
- * Core Negamax search with Alpha-Beta pruning.
+ * Core Negamax search with Alpha-Beta pruning and move ordering.
  *
  * @param pos The current position.
  * @param depth Remaining search depth.
  * @param alpha The lower bound of the search window.
  * @param beta The upper bound of the search window.
+ * @param ply Distance from the root position (0 at root).
  * @return The evaluated score for the player to move.
  */
-int search(Position* pos, int depth, int alpha, int beta);
+int search(Position* pos, int depth, int alpha, int beta, int ply);
 
 #endif
