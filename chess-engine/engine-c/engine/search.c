@@ -201,64 +201,31 @@ static int quiesce(Position* pos, int alpha, int beta) {
 }
 
 /* ========================================================
- *  Search Entry Point with Aspiration Windows
+ *  Search Entry Point
  * ======================================================== */
 
 int findBestMove(Position* pos, int depth, Move* bestMove) {
-    int alpha = -2000000;
-    int beta = 2000000;
+    Move moves[MAX_MOVES];
+    int moveCount = generateLegalMoves(pos, moves);
+    if (moveCount == 0) return 0;
+
+    scoreMoves(moves, moveCount, 0, pos->sideToMove);
+
     int bestScore = -2000000;
+    Move currentBestMove = moves[0];
 
-    /* Aspiration Windows: Start with a narrow window around previous best score */
-    int aspirationWidth = 50;
-    int currentAlpha = -2000000;
-    int currentBeta = 2000000;
-    int iteration = 0;
+    for (int i = 0; i < moveCount; i++) {
+        pickBestMove(moves, moveCount, i);
+        makeMove(pos, &moves[i]);
+        int score = -search(pos, depth - 1, -2000000, 2000000, 1);
+        undoMove(pos, &moves[i]);
 
-    while (iteration < 3) {
-        if (iteration > 0) {
-            currentAlpha = bestScore - aspirationWidth;
-            currentBeta = bestScore + aspirationWidth;
+        if (score > bestScore) {
+            bestScore = score;
+            currentBestMove = moves[i];
         }
-
-        Move moves[MAX_MOVES];
-        int moveCount = generateLegalMoves(pos, moves);
-        if (moveCount == 0) return 0;
-
-        scoreMoves(moves, moveCount, 0, pos->sideToMove);
-
-        int currentBestScore = -2000000;
-        Move currentBestMove = moves[0];
-
-        for (int i = 0; i < moveCount; i++) {
-            pickBestMove(moves, moveCount, i);
-            makeMove(pos, &moves[i]);
-            int score = -search(pos, depth - 1, -currentBeta, -currentAlpha, 1);
-            undoMove(pos, &moves[i]);
-
-            if (score > currentBestScore) {
-                currentBestScore = score;
-                currentBestMove = moves[i];
-            }
-
-            if (currentBestScore > currentAlpha) {
-                currentAlpha = currentBestScore;
-            }
-        }
-
-        /* Check if the score is within the aspiration window */
-        if (currentBestScore <= currentBeta && currentBestScore >= currentAlpha) {
-            bestScore = currentBestScore;
-            if (bestMove) *bestMove = currentBestMove;
-            break;
-        }
-
-        /* If it failed high or low, expand the window and retry */
-        bestScore = currentBestScore;
-        if (bestMove) *bestMove = currentBestMove;
-        aspirationWidth *= 2;
-        iteration++;
     }
 
+    if (bestMove) *bestMove = currentBestMove;
     return bestScore;
 }
