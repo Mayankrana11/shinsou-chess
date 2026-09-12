@@ -1,8 +1,10 @@
 #include <stdio.h>
+#include <stdlib.h>
 
 #include "board/board.h"
 #include "movegen/movegen.h"
 #include "engine/search.h"
+#include "engine/tt.h"
 #include "utils/constants.h"
 
 void testInitialPosition() {
@@ -712,6 +714,8 @@ void testPerftPosition3() {
 }
 
 int main() {
+    initZobrist();
+    initTT();
     testInitialPosition();
     testCheckDetection();
     testCastling();

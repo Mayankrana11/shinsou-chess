@@ -8,7 +8,8 @@ CORE_SRC = board/board.c \
            fen/fen.c \
            engine/eval.c \
            engine/ordering.c \
-           engine/search.c
+           engine/search.c \
+           engine/tt.c
 
 # Main engine binary
 SRC = $(CORE_SRC) main.c
