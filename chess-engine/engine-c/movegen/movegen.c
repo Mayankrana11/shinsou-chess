@@ -3,8 +3,6 @@
 #include "../utils/constants.h"
 #include "../board/board.h"
 
-static int isWhitePiece(int p) { return p > 0; }
-static int isBlackPiece(int p) { return p < 0; }
 static int sameColor(int a, int b) { return (a > 0 && b > 0) || (a < 0 && b < 0); }
 static int inBounds(int r, int c) { return r >= 0 && r < 8 && c >= 0 && c < 8; }
 
