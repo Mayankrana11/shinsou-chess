@@ -1,6 +1,8 @@
 #ifndef TYPES_H
 #define TYPES_H
 
+#include <stdint.h>
+
 #define MAX_MOVES 256
 
 typedef enum {
@@ -24,6 +26,7 @@ typedef struct {
     int prevEnPassantCol;
     int prevCastlingRights;
     int prevHalfmoveClock;
+    uint64_t prevHash;
     int score;
 } Move;
 
@@ -44,6 +47,7 @@ typedef struct {
     int whiteKingCol;
     int blackKingRow;
     int blackKingCol;
+    uint64_t hash;
 } Position;
 
 #endif
