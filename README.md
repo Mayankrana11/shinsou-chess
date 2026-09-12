@@ -153,13 +153,14 @@ Expected output shows 20 legal moves from the starting position, make/undo test 
 - Quiescence search MVV-LVA ordering
 - Fixed mate-distance scoring (ply-based instead of depth-based)
 
-## Next Steps
 
 ### Phase 15 - Iterative Deepening (Step 46)
 
 ### Phase 16 - Transposition Table (Steps 47-50)
 - Zobrist hashing
 - Transposition table implementation
+
+## Next Steps
 
 ### Phase 17 - Search Upgrades (Steps 51+)
 - Principal variation search
