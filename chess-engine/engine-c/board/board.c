@@ -8,10 +8,10 @@
 #include "../movegen/movegen.h"
 
 /* Zobrist Hashing Tables */
-static uint64_t piece_sq[12][8][8];
-static uint64_t side_key;
-static uint64_t castle_keys[4];
-static uint64_t ep_keys[8];
+uint64_t piece_sq[12][8][8];
+uint64_t side_key;
+uint64_t castle_keys[4];
+uint64_t ep_keys[8];
 
 static int pieceToZIndex(int p) {
     if (p == 0) return -1;

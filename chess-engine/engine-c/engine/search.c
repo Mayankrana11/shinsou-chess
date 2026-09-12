@@ -9,6 +9,8 @@
 #include <stdint.h>
 
 #define MATE_SCORE 100000
+#define NULL_MOVE_REDUCTION 100
+#define FUTILITY_THRESHOLD 150
 
 /* Forward declaration of quiescence search */
 static int quiesce(Position* pos, int alpha, int beta);
@@ -49,7 +51,7 @@ void perftDivide(Position* pos, int depth) {
 }
 
 /* ========================================================
- *  Negamax search with Alpha-Beta pruning and TT
+ *  Negamax search with PVS, NMP, LMR, and Futility Pruning
  * ======================================================== */
 
 int search(Position* pos, int depth, int alpha, int beta, int ply) {
@@ -65,6 +67,22 @@ int search(Position* pos, int depth, int alpha, int beta, int ply) {
         return quiesce(pos, alpha, beta);
     }
 
+    /* 2. Null Move Pruning (NMP) */
+    /* Apply NMP at depths > 3 and not in late game.
+       If the side to move can pass and still have a score >= beta, prune. */
+    if (depth >= 3 && !isInCheck(pos, pos->sideToMove)) {
+        Position nullPos = *pos;
+        nullPos.sideToMove = -pos->sideToMove;
+        nullPos.halfmoveClock++;
+        // A simple hash update for null move (side change)
+        nullPos.hash ^= side_key;
+
+        int nullScore = -search(&nullPos, depth - 1 - NULL_MOVE_REDUCTION, -beta, -alpha, ply + 1);
+        if (nullScore >= beta) {
+            return beta;
+        }
+    }
+
     Move moves[MAX_MOVES];
     int moveCount = generateLegalMoves(pos, moves);
 
@@ -76,24 +94,50 @@ int search(Position* pos, int depth, int alpha, int beta, int ply) {
         }
     }
 
-    /* Root move ordering from TT if available */
-    if (entry) {
-        // Move TT move to front (manual swap or just let scoreMoves handle it if we’d integrated it there)
-        // For now, we'll let scoreMoves and pickBestMove handle the heuristics.
-    }
-
     scoreMoves(moves, moveCount, ply, pos->sideToMove);
 
     int bestScore = -2000000;
     Move bestMove = moves[0];
     int alphaOrig = alpha;
+    int firstMove = 1;
 
     for (int i = 0; i < moveCount; i++) {
         pickBestMove(moves, moveCount, i);
 
+        /* 3. Futility Pruning */
+        /* If the move is too bad to possibly reach alpha, prune it. */
+        if (depth >= 3 && moves[i].captured == EMPTY && moves[i].type != MOVE_PROMOTION) {
+            int staticEval = evaluate(pos); // Simplified static eval for futility
+            if (staticEval - FUTILITY_THRESHOLD <= alpha) {
+                continue;
+            }
+        }
+
+        /* 4. Principal Variation Search (PVS) & Late Move Reductions (LMR) */
+        int currentAlpha = alpha;
+        int currentBeta = beta;
+        int searchDepth = depth - 1;
+
+        if (!firstMove) {
+            /* PVS: Search with null window first */
+            currentBeta = alpha + 1;
+
+            /* LMR: Reduce depth for moves searched late */
+            if (i > 3 && depth >= 3 && moves[i].captured == EMPTY && moves[i].type != MOVE_PROMOTION) {
+                searchDepth -= 2; // Simple reduction
+            }
+        }
+
         makeMove(pos, &moves[i]);
-        int score = -search(pos, depth - 1, -beta, -alpha, ply + 1);
+        int score = -search(pos, searchDepth, -currentBeta, -currentAlpha, ply + 1);
         undoMove(pos, &moves[i]);
+
+        /* If search with null window failed high, re-search with full window */
+        if (!firstMove && score > alpha && currentBeta == alpha + 1) {
+            makeMove(pos, &moves[i]);
+            score = -search(pos, depth - 1, -beta, -alpha, ply + 1);
+            undoMove(pos, &moves[i]);
+        }
 
         if (score > bestScore) {
             bestScore = score;
@@ -111,9 +155,10 @@ int search(Position* pos, int depth, int alpha, int beta, int ply) {
         if (bestScore > alpha) {
             alpha = bestScore;
         }
+
+        firstMove = 0;
     }
 
-    /* 2. TT Store */
     TTFlag flag = EXACT;
     if (bestScore <= alphaOrig) flag = UPPERBOUND;
     else if (bestScore >= beta) flag = LOWERBOUND;
@@ -156,7 +201,7 @@ static int quiesce(Position* pos, int alpha, int beta) {
 }
 
 /* ========================================================
- *  Iterative Deepening Entry Point
+ *  Search Entry Point with Aspiration Windows
  * ======================================================== */
 
 int findBestMove(Position* pos, int depth, Move* bestMove) {
@@ -164,8 +209,18 @@ int findBestMove(Position* pos, int depth, Move* bestMove) {
     int beta = 2000000;
     int bestScore = -2000000;
 
-    /* Iterative Deepening */
-    for (int d = 1; d <= depth; d++) {
+    /* Aspiration Windows: Start with a narrow window around previous best score */
+    int aspirationWidth = 50;
+    int currentAlpha = -2000000;
+    int currentBeta = 2000000;
+    int iteration = 0;
+
+    while (iteration < 3) {
+        if (iteration > 0) {
+            currentAlpha = bestScore - aspirationWidth;
+            currentBeta = bestScore + aspirationWidth;
+        }
+
         Move moves[MAX_MOVES];
         int moveCount = generateLegalMoves(pos, moves);
         if (moveCount == 0) return 0;
@@ -178,7 +233,7 @@ int findBestMove(Position* pos, int depth, Move* bestMove) {
         for (int i = 0; i < moveCount; i++) {
             pickBestMove(moves, moveCount, i);
             makeMove(pos, &moves[i]);
-            int score = -search(pos, d - 1, -beta, -alpha, 1);
+            int score = -search(pos, depth - 1, -currentBeta, -currentAlpha, 1);
             undoMove(pos, &moves[i]);
 
             if (score > currentBestScore) {
@@ -186,13 +241,23 @@ int findBestMove(Position* pos, int depth, Move* bestMove) {
                 currentBestMove = moves[i];
             }
 
-            if (currentBestScore > alpha) {
-                alpha = currentBestScore;
+            if (currentBestScore > currentAlpha) {
+                currentAlpha = currentBestScore;
             }
         }
 
+        /* Check if the score is within the aspiration window */
+        if (currentBestScore <= currentBeta && currentBestScore >= currentAlpha) {
+            bestScore = currentBestScore;
+            if (bestMove) *bestMove = currentBestMove;
+            break;
+        }
+
+        /* If it failed high or low, expand the window and retry */
         bestScore = currentBestScore;
         if (bestMove) *bestMove = currentBestMove;
+        aspirationWidth *= 2;
+        iteration++;
     }
 
     return bestScore;

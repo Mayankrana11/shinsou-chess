@@ -20,5 +20,6 @@ int isTerminal(Position* pos, int* result);
 /* Zobrist Hashing */
 void initZobrist();
 uint64_t computeHash(Position* pos);
+extern uint64_t side_key;
 
 #endif
