@@ -160,7 +160,6 @@ Expected output shows 20 legal moves from the starting position, make/undo test 
 - Zobrist hashing
 - Transposition table implementation
 
-## Next Steps
 
 ### Phase 17 - Search Upgrades (Steps 51+)
 - Principal variation search
@@ -168,6 +167,8 @@ Expected output shows 20 legal moves from the starting position, make/undo test 
 - Null-move pruning
 - Late move reductions
 - Futility pruning
+
+## Next Steps
 
 ### Phase 18 - Bitboards (Future)
 - Bitboard representation
