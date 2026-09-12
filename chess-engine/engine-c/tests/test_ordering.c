@@ -4,6 +4,7 @@
 #include "../board/board.h"
 #include "../engine/ordering.h"
 #include "../engine/search.h"
+#include "../engine/tt.h"
 #include "../movegen/movegen.h"
 #include "../fen/fen.h"
 #include "../utils/constants.h"
@@ -29,6 +30,7 @@ void test_mvvlva_ordering() {
     /* White queen on a1 (row 7, col 0) can capture black pawn on b2 (row 6, col 1) */
     pos.board[7][0] = WQUEEN;
     pos.board[6][1] = BPAWN;
+    pos.hash = computeHash(&pos);
 
     Move moves[MAX_MOVES];
     int count = generateLegalMoves(&pos, moves);
@@ -80,6 +82,7 @@ void test_captures_before_quiet() {
     pos.board[0][4] = BKING;
     pos.board[4][3] = WPAWN;
     pos.board[3][4] = BPAWN;  /* Pawn can capture diagonally */
+    pos.hash = computeHash(&pos);
 
     Move moves[MAX_MOVES];
     int count = generateLegalMoves(&pos, moves);
@@ -111,6 +114,7 @@ void test_killer_moves() {
     printf("Test 3: Killer Move Ordering...\n");
     Position pos;
     initBoard(&pos);
+    pos.hash = computeHash(&pos);
 
     initOrdering();
 
@@ -155,6 +159,7 @@ void test_killer_replacement() {
     printf("Test 4: Killer FIFO Replacement...\n");
     Position pos;
     initBoard(&pos);
+    pos.hash = computeHash(&pos);
 
     initOrdering();
 
@@ -201,6 +206,7 @@ void test_history_heuristic() {
     printf("Test 5: History Heuristic...\n");
     Position pos;
     initBoard(&pos);
+    pos.hash = computeHash(&pos);
 
     initOrdering();
 
@@ -274,6 +280,7 @@ void test_perft_correctness() {
     printf("Test 7: Perft Correctness (ordering must not break move gen)...\n");
     Position pos;
     initBoard(&pos);
+    pos.hash = computeHash(&pos);
 
     uint64_t p1 = perft(&pos, 1);
     uint64_t p2 = perft(&pos, 2);
@@ -308,6 +315,7 @@ void test_search_correctness() {
     pos.board[7][3] = WROOK;    /* Rook can capture it */
     pos.whiteKingRow = 7; pos.whiteKingCol = 4;
     pos.blackKingRow = 0; pos.blackKingCol = 4;
+    pos.hash = computeHash(&pos);
 
     Move bestMove;
     findBestMove(&pos, 3, &bestMove);
@@ -325,6 +333,7 @@ void test_search_correctness() {
     pos.board[6][0] = WQUEEN;   /* Queen can deliver back rank mate */
     pos.whiteKingRow = 7; pos.whiteKingCol = 4;
     pos.blackKingRow = 0; pos.blackKingCol = 7;
+    pos.hash = computeHash(&pos);
 
     findBestMove(&pos, 3, &bestMove);
     printf("  Mate: (%d,%d)->(%d,%d)\n",
@@ -350,6 +359,7 @@ void test_quiescence_ordering() {
     pos.board[7][2] = BROOK;
     pos.whiteKingRow = 7; pos.whiteKingCol = 4;
     pos.blackKingRow = 0; pos.blackKingCol = 4;
+    pos.hash = computeHash(&pos);
 
     Move bestMove;
     int score = findBestMove(&pos, 1, &bestMove);
@@ -360,6 +370,8 @@ void test_quiescence_ordering() {
 }
 
 int main() {
+    initZobrist();
+    initTT();
     printf("=== Move Ordering Tests (Phase 14) ===\n\n");
     test_mvvlva_ordering();
     test_captures_before_quiet();

@@ -3,11 +3,13 @@
 #include "../board/board.h"
 #include "../engine/eval.h"
 #include "../fen/fen.h"
+#include "../engine/tt.h"
 #include "../utils/constants.h"
 
 void test_starting_position() {
     Position pos;
     initBoard(&pos);
+    pos.hash = computeHash(&pos);
     int score = evaluate(&pos);
     printf("Starting position score: %d\n", score);
     // Starting position should be roughly 0
@@ -20,11 +22,13 @@ void test_material_advantage() {
     // "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1" is start
     // Let's use a simple FEN: a queen for white, nothing else.
     parseFEN(&pos, "4q3/8/8/8/8/8/8/4K3 w - - 0 1");
+    pos.hash = computeHash(&pos);
     int score = evaluate(&pos);
     printf("Black extra queen score: %d\n", score);
     assert(score < -800);
 
     parseFEN(&pos, "4k3/8/8/8/8/8/8/4Q3 w - - 0 1");
+    pos.hash = computeHash(&pos);
     score = evaluate(&pos);
     printf("White extra queen score: %d\n", score);
     assert(score > 800);
@@ -34,6 +38,7 @@ void test_pst_knights() {
     Position pos;
     // Knight in center
     parseFEN(&pos, "8/8/8/8/4N3/8/8/4K3 w - - 0 1");
+    pos.hash = computeHash(&pos);
     evaluate(&pos);
 
     // Knight on edge
@@ -45,11 +50,15 @@ void test_pst_knights() {
     clearBoard(&pos);
     pos.board[7][4] = WKING;
     pos.board[3][3] = WKNIGHT;
+    pos.whiteKingRow = 7; pos.whiteKingCol = 4;
+    pos.hash = computeHash(&pos);
     int s1 = evaluate(&pos);
 
     clearBoard(&pos);
     pos.board[7][4] = WKING;
     pos.board[7][0] = WKNIGHT;
+    pos.whiteKingRow = 7; pos.whiteKingCol = 4;
+    pos.hash = computeHash(&pos);
     int s2 = evaluate(&pos);
 
     printf("Knight center: %d, Knight edge: %d\n", s1, s2);
@@ -57,6 +66,8 @@ void test_pst_knights() {
 }
 
 int main() {
+    initZobrist();
+    initTT();
     printf("Running Evaluation Tests...\n");
     test_starting_position();
     test_material_advantage();

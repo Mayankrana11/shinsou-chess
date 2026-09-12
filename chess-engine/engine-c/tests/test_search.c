@@ -2,6 +2,7 @@
 #include <assert.h>
 #include "../board/board.h"
 #include "../engine/search.h"
+#include "../engine/tt.h"
 #include "../fen/fen.h"
 #include "../utils/constants.h"
 
@@ -16,6 +17,7 @@ void test_capture_search() {
     pos.whiteKingRow = 7; pos.whiteKingCol = 4;
     pos.blackKingRow = 0; pos.blackKingCol = 4;
     pos.board[7][3] = WROOK;
+    pos.hash = computeHash(&pos);
 
     Move bestMove;
     findBestMove(&pos, 3, &bestMove);
@@ -38,6 +40,7 @@ void test_mate_in_one() {
     pos.board[6][0] = WROOK;    /* Rook can go to a8 for mate */
     pos.whiteKingRow = 7; pos.whiteKingCol = 4;
     pos.blackKingRow = 0; pos.blackKingCol = 7;
+    pos.hash = computeHash(&pos);
 
     Move bestMove;
     findBestMove(&pos, 3, &bestMove);
@@ -65,6 +68,7 @@ void test_quiescence_horizon() {
 
     // Add another black piece to capture white queen
     pos.board[7][2] = BROOK; // Rook on c1
+    pos.hash = computeHash(&pos);
 
     Move bestMove;
     int score = findBestMove(&pos, 1, &bestMove);
@@ -78,6 +82,8 @@ void test_quiescence_horizon() {
 }
 
 int main() {
+    initZobrist();
+    initTT();
     printf("Running Search Tests...\n");
     test_capture_search();
     test_mate_in_one();
