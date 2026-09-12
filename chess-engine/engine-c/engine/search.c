@@ -1,6 +1,7 @@
 #include "search.h"
 #include "eval.h"
 #include "ordering.h"
+#include "tt.h"
 #include "../movegen/movegen.h"
 #include "../board/board.h"
 #include "../utils/constants.h"
@@ -14,59 +15,52 @@ static int quiesce(Position* pos, int alpha, int beta);
 
 /* ========================================================
  *  Perft — move generation correctness testing
- *  (No ordering needed; counts all leaf nodes exactly.)
  * ======================================================== */
 
 uint64_t perft(Position* pos, int depth) {
-    if (depth == 0) {
-        return 1;
-    }
-
+    if (depth == 0) return 1;
     Move moves[MAX_MOVES];
     int moveCount = generateLegalMoves(pos, moves);
     uint64_t nodes = 0;
-
     for (int i = 0; i < moveCount; i++) {
         makeMove(pos, &moves[i]);
         nodes += perft(pos, depth - 1);
         undoMove(pos, &moves[i]);
     }
-
     return nodes;
 }
 
 void perftDivide(Position* pos, int depth) {
-    if (depth == 0) {
-        return;
-    }
-
+    if (depth == 0) return;
     Move moves[MAX_MOVES];
     int moveCount = generateLegalMoves(pos, moves);
     uint64_t totalNodes = 0;
-
     for (int i = 0; i < moveCount; i++) {
         makeMove(pos, &moves[i]);
         uint64_t nodes = perft(pos, depth - 1);
         undoMove(pos, &moves[i]);
-
-        char fromFile = 'a' + moves[i].fromCol;
-        char fromRank = '8' - moves[i].fromRow;
-        char toFile = 'a' + moves[i].toCol;
-        char toRank = '8' - moves[i].toRow;
-
-        printf("%c%c%c%c: %llu\n", fromFile, fromRank, toFile, toRank, (unsigned long long)nodes);
+        printf("%c%c%c%c: %llu\n",
+               'a' + moves[i].fromCol, '8' - moves[i].fromRow,
+               'a' + moves[i].toCol, '8' - moves[i].toRow,
+               (unsigned long long)nodes);
         totalNodes += nodes;
     }
-
     printf("\nTotal nodes: %llu\n", (unsigned long long)totalNodes);
 }
 
 /* ========================================================
- *  Negamax search with Alpha-Beta pruning and move ordering
+ *  Negamax search with Alpha-Beta pruning and TT
  * ======================================================== */
 
 int search(Position* pos, int depth, int alpha, int beta, int ply) {
-    /* At depth 0, drop into quiescence to resolve tactics */
+    /* 1. TT Probe */
+    TTEntry *entry = ttProbe(pos->hash);
+    if (entry && entry->depth >= depth) {
+        if (entry->flag == EXACT) return entry->score;
+        if (entry->flag == LOWERBOUND && entry->score >= beta) return entry->score;
+        if (entry->flag == UPPERBOUND && entry->score <= alpha) return entry->score;
+    }
+
     if (depth == 0) {
         return quiesce(pos, alpha, beta);
     }
@@ -74,25 +68,27 @@ int search(Position* pos, int depth, int alpha, int beta, int ply) {
     Move moves[MAX_MOVES];
     int moveCount = generateLegalMoves(pos, moves);
 
-    /* Terminal conditions */
     if (moveCount == 0) {
         if (isInCheck(pos, pos->sideToMove)) {
-            /* Checkmate: use ply for correct mate-distance preference.
-             * Lower ply = closer mate = more negative = preferred by opponent,
-             * so after negation the mating side prefers faster mates. */
             return -MATE_SCORE + ply;
         } else {
-            return 0; /* Stalemate */
+            return 0;
         }
     }
 
-    /* Score and order moves: captures (MVV-LVA), promotions, killers, history */
+    /* Root move ordering from TT if available */
+    if (entry) {
+        // Move TT move to front (manual swap or just let scoreMoves handle it if we’d integrated it there)
+        // For now, we'll let scoreMoves and pickBestMove handle the heuristics.
+    }
+
     scoreMoves(moves, moveCount, ply, pos->sideToMove);
 
     int bestScore = -2000000;
+    Move bestMove = moves[0];
+    int alphaOrig = alpha;
 
     for (int i = 0; i < moveCount; i++) {
-        /* Pick the best remaining move (incremental selection sort) */
         pickBestMove(moves, moveCount, i);
 
         makeMove(pos, &moves[i]);
@@ -101,15 +97,15 @@ int search(Position* pos, int depth, int alpha, int beta, int ply) {
 
         if (score > bestScore) {
             bestScore = score;
+            bestMove = moves[i];
         }
 
         if (bestScore >= beta) {
-            /* Beta cutoff: update ordering heuristics for quiet moves */
             if (moves[i].captured == EMPTY && moves[i].type != MOVE_PROMOTION) {
                 updateKillers(&moves[i], ply);
                 updateHistory(&moves[i], pos->sideToMove, depth);
             }
-            return beta;
+            break;
         }
 
         if (bestScore > alpha) {
@@ -117,33 +113,34 @@ int search(Position* pos, int depth, int alpha, int beta, int ply) {
         }
     }
 
+    /* 2. TT Store */
+    TTFlag flag = EXACT;
+    if (bestScore <= alphaOrig) flag = UPPERBOUND;
+    else if (bestScore >= beta) flag = LOWERBOUND;
+
+    ttStore(pos->hash, depth, bestScore, flag, bestMove);
+
     return bestScore;
 }
 
 /* ========================================================
- *  Quiescence search — resolve captures/promotions at depth 0
- *  Uses MVV-LVA ordering for tactical moves.
+ *  Quiescence search
  * ======================================================== */
 
 static int quiesce(Position* pos, int alpha, int beta) {
-    /* Stand-pat: the side to move can choose not to capture */
     int standPat = evaluate(pos) * pos->sideToMove;
     if (standPat >= beta) return beta;
     if (standPat > alpha) alpha = standPat;
 
     Move moves[MAX_MOVES];
     int moveCount = generateTacticalMoves(pos, moves);
-
     if (moveCount == 0) return standPat;
 
-    /* Order captures/promotions by MVV-LVA */
     scoreCaptures(moves, moveCount);
 
     int bestScore = -2000000;
-
     for (int i = 0; i < moveCount; i++) {
         pickBestMove(moves, moveCount, i);
-
         makeMove(pos, &moves[i]);
         int score = -quiesce(pos, -beta, -alpha);
         undoMove(pos, &moves[i]);
@@ -151,55 +148,51 @@ static int quiesce(Position* pos, int alpha, int beta) {
         if (score > bestScore) {
             bestScore = score;
         }
-
-        if (bestScore >= beta) {
-            return beta;
-        }
-        if (bestScore > alpha) {
-            alpha = bestScore;
-        }
+        if (bestScore >= beta) return beta;
+        if (bestScore > alpha) alpha = bestScore;
     }
 
     return (bestScore > standPat) ? bestScore : standPat;
 }
 
 /* ========================================================
- *  Root search entry point
+ *  Iterative Deepening Entry Point
  * ======================================================== */
 
 int findBestMove(Position* pos, int depth, Move* bestMove) {
-    /* Initialize ordering data for this search */
-    initOrdering();
-
     int alpha = -2000000;
     int beta = 2000000;
     int bestScore = -2000000;
 
-    Move moves[MAX_MOVES];
-    int moveCount = generateLegalMoves(pos, moves);
+    /* Iterative Deepening */
+    for (int d = 1; d <= depth; d++) {
+        Move moves[MAX_MOVES];
+        int moveCount = generateLegalMoves(pos, moves);
+        if (moveCount == 0) return 0;
 
-    if (moveCount == 0) return 0;
+        scoreMoves(moves, moveCount, 0, pos->sideToMove);
 
-    /* Score root moves */
-    scoreMoves(moves, moveCount, 0, pos->sideToMove);
+        int currentBestScore = -2000000;
+        Move currentBestMove = moves[0];
 
-    for (int i = 0; i < moveCount; i++) {
-        pickBestMove(moves, moveCount, i);
+        for (int i = 0; i < moveCount; i++) {
+            pickBestMove(moves, moveCount, i);
+            makeMove(pos, &moves[i]);
+            int score = -search(pos, d - 1, -beta, -alpha, 1);
+            undoMove(pos, &moves[i]);
 
-        makeMove(pos, &moves[i]);
-        int score = -search(pos, depth - 1, -beta, -alpha, 1);
-        undoMove(pos, &moves[i]);
+            if (score > currentBestScore) {
+                currentBestScore = score;
+                currentBestMove = moves[i];
+            }
 
-        if (score > bestScore) {
-            bestScore = score;
-            if (bestMove) {
-                *bestMove = moves[i];
+            if (currentBestScore > alpha) {
+                alpha = currentBestScore;
             }
         }
 
-        if (bestScore > alpha) {
-            alpha = bestScore;
-        }
+        bestScore = currentBestScore;
+        if (bestMove) *bestMove = currentBestMove;
     }
 
     return bestScore;
