@@ -53,6 +53,9 @@ temp
 #masterp
 /local
 
+#environment
+/.claude
+
 # =========================
 # Package locks (optional)
 # =========================

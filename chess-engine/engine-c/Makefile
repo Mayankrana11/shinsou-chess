@@ -44,9 +44,6 @@ run_ordering: test_ordering
 	./tests/test_ordering.exe
 
 clean:
-	del $(TARGET)
-	del tests/test_eval.exe
-	del tests/test_search.exe
-	del tests/test_ordering.exe
+	del /f /q $(TARGET) tests\test_eval.exe tests\test_search.exe tests\test_ordering.exe 2>nul || true
 
 .PHONY: all clean test_eval run_eval test_search run_search test_ordering run_ordering
