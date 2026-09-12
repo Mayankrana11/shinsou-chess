@@ -110,12 +110,8 @@ int findKing(Position* pos, int color) {
     return 0;
 }
 
-static int inBounds(int r, int c) {
-    return r >= 0 && r < 8 && c >= 0 && c < 8;
-}
-
-static int isWhitePiece(int p) { return p > 0; }
-static int isBlackPiece(int p) { return p < 0; }
+static inline int isWhitePiece(int p) { return p > 0; }
+static inline int isBlackPiece(int p) { return p < 0; }
 
 int pawnAttacks(int r, int c, int color, int targetR, int targetC) {
     int dir = (color == WHITE) ? -1 : 1;
