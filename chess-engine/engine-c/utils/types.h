@@ -48,6 +48,17 @@ typedef struct {
     int blackKingRow;
     int blackKingCol;
     uint64_t hash;
+
+    /* Bitboards */
+    uint64_t whitePieces;
+    uint64_t blackPieces;
+    uint64_t allPieces;
+    uint64_t pawns;
+    uint64_t knights;
+    uint64_t bishops;
+    uint64_t rooks;
+    uint64_t queens;
+    uint64_t kings;
 } Position;
 
 #endif
