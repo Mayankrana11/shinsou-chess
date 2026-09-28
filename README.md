@@ -168,11 +168,12 @@ Expected output shows 20 legal moves from the starting position, make/undo test 
 - Late move reductions
 - Futility pruning
 
-## Next Steps
 
-### Phase 18 - Bitboards (Future)
+### Phase 18 - Bitboards
 - Bitboard representation
 - Magic bitboard attack generation
+
+## Next Steps
 
 ### Phase 19 - Optimization (Future)
 - Memory layout

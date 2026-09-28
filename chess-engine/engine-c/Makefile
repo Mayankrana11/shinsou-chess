@@ -5,6 +5,7 @@ TARGET = shinsou.exe
 # Core source files
 CORE_SRC = board/board.c \
            movegen/movegen.c \
+           movegen/attacks.c \
            fen/fen.c \
            engine/eval.c \
            engine/ordering.c \
