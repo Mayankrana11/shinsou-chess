@@ -49,6 +49,7 @@ engine-cwasm.map
 .log
 tmp
 temp
+*.exe
 
 #masterp
 /local
