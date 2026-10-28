@@ -9,6 +9,7 @@ void printBoard(Position* pos);
 void copyPosition(Position* dst, const Position* src);
 int findKing(Position* pos, int color);
 int isInCheck(Position* pos, int color);
+int isSquareAttacked(Position* pos, int row, int col, int byColor);
 int getCastlingRights(Position* pos);
 void setCastlingRights(Position* pos, int rights);
 void makeMove(Position* pos, Move* move);

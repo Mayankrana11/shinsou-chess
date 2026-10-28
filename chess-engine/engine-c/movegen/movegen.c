@@ -229,21 +229,4 @@ int generateTacticalMoves(Position* pos, Move moves[]) {
         }
     }
     return tacticalCount;
-});
-            if (!isInCheck(pos, pos->sideToMove == WHITE ? BLACK : WHITE)) {
-                moves[tacticalCount++] = *m;
-            }
-            undoMove(pos, m);
-        }
-    }
-    return tacticalCount;
-}
-);
-            if (!isInCheck(pos, pos->sideToMove == WHITE ? BLACK : WHITE)) {
-                moves[tacticalCount++] = *m;
-            }
-            undoMove(pos, m);
-        }
-    }
-    return tacticalCount;
 }

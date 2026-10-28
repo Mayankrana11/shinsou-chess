@@ -6,6 +6,7 @@
 #include "board.h"
 #include "../utils/constants.h"
 #include "../utils/bitboard.h"
+#include "../movegen/attacks.h"
 #include "../movegen/movegen.h"
 
 /* Zobrist Hashing Tables */
