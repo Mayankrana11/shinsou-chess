@@ -47,4 +47,18 @@ run_ordering: test_ordering
 clean:
 	del /f /q $(TARGET) tests\test_eval.exe tests\test_search.exe tests\test_ordering.exe 2>nul || true
 
-.PHONY: all clean test_eval run_eval test_search run_search test_ordering run_ordering
+# WASM Build
+EMCC = emcc
+WASM_CFLAGS = -O3 -std=c11 -I. -Iboard -Imovegen -Ifen -Iengine -Iutils
+WASM_TARGET = ../../frontend/public/engine/engine.js
+WASM_FLAGS = -s EXPORTED_FUNCTIONS="['_get_best_move']" \
+             -s EXPORTED_RUNTIME_METHODS="['ccall', 'cwrap']" \
+             -s MODULARIZE=1 -s EXPORT_NAME="createEngineModule"
+
+wasm: $(CORE_SRC) wasm_bridge.c
+	$(EMCC) $(WASM_CFLAGS) $(CORE_SRC) wasm_bridge.c $(WASM_FLAGS) -o $(WASM_TARGET)
+
+wasm_clean:
+	del /f /q ../../frontend/public/engine/engine.js ../../frontend/public/engine/engine.wasm 2>nul || true
+
+.PHONY: all clean test_eval run_eval test_search run_search test_ordering run_ordering wasm wasm_clean
