@@ -55,6 +55,7 @@ export default function ChessBoard() {
     try {
       const fen = currentGame.fen();
       const bestMove = await getBestMove(fen);
+      console.log("Engine raw output:", bestMove);
 
       // C engine returns "fromRow,fromCol,toRow,toCol" (0-7)
       // chess.js expects "e2e4"
@@ -66,7 +67,12 @@ export default function ChessBoard() {
       const notation = `${fromFile}${fromRank}${toFile}${toRank}`;
 
       const newGame = new Chess(currentGame.fen());
-      newGame.move(notation);
+      const moveResult = newGame.move(notation);
+
+      if (!moveResult) {
+        throw new Error(`Chess.js rejected move ${notation} as invalid`);
+      }
+
       setGame(newGame);
     } catch (e) {
       console.error("Engine move failed:", e);

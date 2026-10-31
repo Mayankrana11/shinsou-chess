@@ -2,204 +2,77 @@
 
 Shinsou means "a deeper layer" in Japanese. This project builds a chess engine from first principles with a focus on correctness, testability, and clean architecture.
 
-The C engine implements:
+The project consists of a high-performance chess engine written in C and a modern React frontend. The C engine is compiled to WebAssembly (WASM) using Emscripten, allowing the engine to run directly in the browser.
 
-- Board representation with full game state (side to move, castling rights, en passant, halfmove clock, fullmove number, king positions)
-- Pseudo-legal move generation for all pieces (pawn, knight, bishop, rook, queen, king)
-- Legal move generation with check detection
-- Special moves with full legality: castling (kingside and queenside), en passant, promotion (queen, rook, bishop, knight)
-- Castling rules: king not in check, does not move through check, does not land in check
-- En passant with discovered check detection
-- Attack detection system (isSquareAttacked, isInCheck)
-- Make and undo move with complete state restoration
-- Comprehensive test suite verifying move generation, make/undo integrity, check detection, special move legality, **pinned pieces, discovered checks, double check**
+### C Engine Implementation
+The C engine implements:
+- Board representation with full game state (side to move, castling rights, en passant, halfmove clock, fullmove number, king positions).
+- Pseudo-legal and legal move generation with full check detection and special rules (castling, en passant, promotion).
+- A sophisticated search pipeline featuring Negamax, Alpha-Beta pruning, Principal Variation Search (PVS), Null-Move Pruning (NMP), and Late Move Reductions (LMR).
+- Move ordering using MVV-LVA, Killer moves, and History heuristics.
+- Transposition Table (TT) using Zobrist hashing for move caching.
+- Evaluation based on material and piece-square tables.
+
+### Frontend Implementation
+The frontend is a React application that provides a professional chess interface:
+- WASM Bridge: Interfaces with the C engine via Emscripten's `ccall`.
+- Game Logic: Integrated with `chess.js` for move validation and FEN management.
+- User Experience: Supports color selection, game restarts, and real-time engine responses.
 
 ## Project Structure
 
 ```
 shinsou-chess/
 ├── chess-engine/
-│   └── engine-c/
-│       ├── board/
-│       │   ├── board.h
-│       │   └── board.c
-│       ├── movegen/
-│       │   ├── movegen.h
-│       │   ├── movegen.c
-│       │   └── attacks.h
-│       ├── engine/
-│       │   ├── search.h
-│       │   ├── search.c
-│       │   ├── eval.h
-│       │   ├── eval.c
-│       │   ├── ordering.h
-│       │   └── ordering.c
-│       ├── fen/
-│       │   ├── fen.h
-│       │   └── fen.c
-│       ├── tests/
-│       │   ├── test_fen.c
-│       │   ├── test_eval.c
-│       │   ├── test_search.c
-│       │   └── test_ordering.c
-│       ├── utils/
-│       │   ├── types.h
-│       │   └── constants.h
-│       ├── main.c
-│       └── Makefile
-├── frontend/
-│   ├── public/
-│   │   ├── pieces/
-│   │   └── engine/
-│   ├── src/
-│   │   ├── components/
-│   │   ├── engine/
-│   │   ├── state/
-│   │   ├── utils/
-│   │   └── styles/
-│   ├── package.json
-│   └── vite.config.js
-├── local/
-│   └── masterp.txt
-└── README.md
+│   └── engine-c/           # C Source code and build files
+│       ├── board/          # Board representation and state
+│       ├── movegen/        # Move generation logic
+│       ├── engine/         # Search and evaluation
+│       ├── fen/            # FEN parsing and generation
+│       ├── tests/          # Test suite
+│       ├── utils/          # Constants and types
+│       ├── main.c          # Engine entry point
+│       └── Makefile        # Build configurations (native and WASM)
+├── emsdk/                  # Emscripten SDK (requires download)
+├── frontend/               # React frontend
+│   ├── public/             # Static assets and WASM binaries
+│   │   └── engine/         # Compiled engine.js and engine.wasm
+│   └── src/                # React source code
+│       ├── components/     # UI components (Board, Square, etc.)
+│       ├── engine/         # WASM loader and Engine bridge
+│       ├── utils/          # Chess utility functions
+│       └── App.jsx         # Main application entry
+└── DESIGN.md               # Detailed design phases and principles
 ```
 
-## Build and Test
+## Running Instructions
 
+### 1. Setup Emscripten (WASM Compiler)
+The engine requires the Emscripten SDK to compile C to WASM.
+- Download and install the `emsdk` into the root directory.
+- Configure the environment in your terminal:
+  ```bash
+  cd emsdk
+  ./emsdk install latest
+  ./emsdk activate latest
+  # Windows:
+  .\emsdk_env.ps1
+  # Linux/Mac:
+  source ./emsdk_env.sh
+  ```
+
+### 2. Build the WASM Engine
+Compile the C code and move the binaries to the frontend public folder:
 ```bash
 cd chess-engine/engine-c
-gcc -Wall -Wextra -Wpedantic -std=c11 -I. -o shinsou.exe board/board.c movegen/movegen.c main.c
-./shinsou.exe
+make wasm
 ```
 
-Expected output shows 20 legal moves from the starting position, make/undo test passing, and special move tests for check, castling (through check, into check, king in check), en passant (discovered check, legal), and promotion make/undo.
-
-## Completed Phases
-
-### Phase 1 - Board (Steps 1-5)
-- Project structure and constants
-- Position struct with complete game state
-- Board initialization and printing
-
-### Phase 2 - Move Structure (Steps 6-7)
-- Move struct with source, destination, piece, captured, promotion, type flags, and undo state
-- Fixed-size move list (MAX_MOVES = 256)
-
-### Phase 3 - Move Generation (Steps 8-14)
-- Coordinate helpers (inBounds, sameColor)
-- Pawn moves (single, double, captures, promotions)
-- Knight moves (offset table)
-- Bishop, rook, queen moves (ray traversal)
-- King moves (single square)
-
-### Phase 4 - Attack System (Steps 15-17)
-- isSquareAttacked for all piece types
-- findKing and king square tracking
-- isInCheck using attack detection
-
-### Phase 5 - Make/Undo (Steps 18-19)
-- makeMove updates board, side to move, castling rights, en passant, clocks, king positions
-- undoMove restores exact position state
-- Verified with make/undo round-trip test
-
-### Phase 6 - Special Rules (Steps 20-22)
-- Castling with full legality (king not in check, not through check, not into check, squares empty)
-- En passant with discovered check handling
-- Promotion (queen, rook, bishop, knight) with make/undo integration
-
-
-### Phase 7 - Legal Moves (Steps 23-24) 
-- Separate pseudo-legal from legal generation
-- Test pinned pieces, discovered checks, double check, castling through check, en passant discovered check
-
-
-### Phase 8 - Checkmate/Stalemate (Steps 25-27)
-- isCheckmate and isStalemate detection
-- Terminal state handling
-
-
-### Phase 9 - Perft (Steps 28-30)
-- perft(depth) node counting
-- perft divide for debugging
-- Validation against known positions
-
-
-### Phase 10 - FEN (Steps 31-33)
-- FEN parsing and generation
-- All six fields support
-
-
-### Phase 11 - Evaluation (Steps 34-36)
-- Material evaluation
-- Piece-square tables
-- Positional factors
-
-
-### Phase 12 - Search (Steps 37-40)
-- Negamax
-- Fixed-depth search
-- Alpha-beta pruning
-- Terminal conditions
-
-
-### Phase 13 - Quiescence (Step 41)
-- Capture and promotion search at depth 0
-
-### Phase 14 - Move Ordering (Steps 42-45)
-- MVV-LVA (Most Valuable Victim - Least Valuable Attacker) capture ordering
-- Killer moves (2 slots per ply with FIFO replacement)
-- History heuristic (depth² weighted, capped)
-- Incremental selection sort (pickBestMove) for efficient early cutoffs
-- Quiescence search MVV-LVA ordering
-- Fixed mate-distance scoring (ply-based instead of depth-based)
-
-
-### Phase 15 - Iterative Deepening (Step 46)
-
-### Phase 16 - Transposition Table (Steps 47-50)
-- Zobrist hashing
-- Transposition table implementation
-
-
-### Phase 17 - Search Upgrades (Steps 51+)
-- Principal variation search
-- Aspiration windows
-- Null-move pruning
-- Late move reductions
-- Futility pruning
-
-
-### Phase 18 - Bitboards
-- Bitboard representation
-- Magic bitboard attack generation
-
-## Next Steps
-
-### Phase 19 - Optimization (Future)
-- Memory layout
-- Hot path optimization
-- Profiling-guided improvements
-
-### Phase 20 - UCI (Future)
-- UCI protocol support
-
-### Phase 21 - WASM (Future)
-- Emscripten compilation
-- WASM interface
-
-### Phase 22-27 - Frontend Integration (Future)
-- React UI
-- Web Worker for engine
-- Engine statistics display
-
-## Design Principles
-
-1. Correctness before optimization
-2. Chess logic separate from UI logic
-3. C engine usable independently
-4. WASM as bridge between C and JavaScript
-5. No dynamic allocation in search
-6. Contiguous, cache-friendly data structures
-7. APIs designed for future bitboard migration
-8. Perft testing for move generator verification
-
+### 3. Run the Frontend
+Launch the React application:
+```bash
+cd frontend
+npm install
+npm run dev
+```
+The application will be available at `http://localhost:5173` by default.
