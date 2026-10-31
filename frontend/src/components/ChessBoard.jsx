@@ -1,8 +1,10 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { Chess } from "chess.js";
 import Square from "./Square";
+import { getBestMove } from "../engine/EngineBridge";
 import "../styles/board.css";
 
-const initialBoard = [
+const initialBoardLayout = [
   ["r","n","b","q","k","b","n","r"],
   ["p","p","p","p","p","p","p","p"],
   [null,null,null,null,null,null,null,null],
@@ -14,176 +16,153 @@ const initialBoard = [
 ];
 
 export default function ChessBoard() {
-  const [board, setBoard] = useState(initialBoard);
+  const [game, setGame] = useState(new Chess());
+  const [userColor, setUserColor] = useState(null); // 'w' or 'b'
   const [selected, setSelected] = useState(null);
-  const [moves, setMoves] = useState([]);
+  const [validMoves, setValidMoves] = useState([]);
+  const [isEngineThinking, setIsEngineThinking] = useState(false);
 
-  function isWhite(p) {
-    return p && p === p.toUpperCase();
-  }
-
-  function inBounds(r, c) {
-    return r >= 0 && r < 8 && c >= 0 && c < 8;
-  }
-
-  function generateMoves(r, c) {
-    const piece = board[r][c];
-    if (!piece) return [];
-
-    const result = [];
-    const white = isWhite(piece);
-
-    // ♙ Pawn
-    if (piece.toLowerCase() === "p") {
-    const dir = white ? -1 : 1;
-    const startRow = white ? 6 : 1;
-
-    // 1 step forward
-    if (inBounds(r + dir, c) && !board[r + dir][c]) {
-        result.push([r + dir, c]);
-
-        // 2 steps from starting position
-        if (r === startRow && !board[r + 2 * dir][c]) {
-        result.push([r + 2 * dir, c]);
+  // Convert chess.js board to 2D array for rendering
+  const renderBoard = () => {
+    const board = Array(8).fill(null).map(() => Array(8).fill(null));
+    game.board().forEach((row, r) => {
+      row.forEach((cell, c) => {
+        if (cell) {
+          const p = cell.type;
+          const color = cell.color === 'w' ? 'upper' : 'lower';
+          board[r][c] = color === 'upper' ? p.toUpperCase() : p.toLowerCase();
         }
-    }
+      });
+    });
+    return board;
+  };
 
-    // diagonal captures
-    for (let dc of [-1, 1]) {
-        let nr = r + dir;
-        let nc = c + dc;
-
-        if (
-        inBounds(nr, nc) &&
-        board[nr][nc] &&
-        isWhite(board[nr][nc]) !== white
-        ) {
-        result.push([nr, nc]);
-        }
-    }
-    }
-
-    // ♞ Knight
-    if (piece.toLowerCase() === "n") {
-      const dirs = [
-        [2,1],[2,-1],[-2,1],[-2,-1],
-        [1,2],[1,-2],[-1,2],[-1,-2]
-      ];
-
-      for (let [dr, dc] of dirs) {
-        let nr = r + dr;
-        let nc = c + dc;
-
-        if (!inBounds(nr, nc)) continue;
-
-        if (!board[nr][nc] || isWhite(board[nr][nc]) !== white) {
-          result.push([nr, nc]);
-        }
-      }
-    }
-
-    // ♜ ♝ ♛ sliding pieces
-    const directions = {
-      r: [[1,0],[-1,0],[0,1],[0,-1]],
-      b: [[1,1],[1,-1],[-1,1],[-1,-1]],
-      q: [[1,0],[-1,0],[0,1],[0,-1],[1,1],[1,-1],[-1,1],[-1,-1]]
-    };
-
-    const type = piece.toLowerCase();
-
-    if (directions[type]) {
-      for (let [dr, dc] of directions[type]) {
-        let nr = r + dr;
-        let nc = c + dc;
-
-        while (inBounds(nr, nc)) {
-          if (!board[nr][nc]) {
-            result.push([nr, nc]);
-          } else {
-            if (isWhite(board[nr][nc]) !== white) {
-              result.push([nr, nc]);
-            }
-            break;
-          }
-
-          nr += dr;
-          nc += dc;
-        }
-      }
-    }
-
-    // ♚ King
-    if (type === "k") {
-      for (let dr = -1; dr <= 1; dr++) {
-        for (let dc = -1; dc <= 1; dc++) {
-          if (dr === 0 && dc === 0) continue;
-
-          let nr = r + dr;
-          let nc = c + dc;
-
-          if (!inBounds(nr, nc)) continue;
-
-          if (!board[nr][nc] || isWhite(board[nr][nc]) !== white) {
-            result.push([nr, nc]);
-          }
-        }
-      }
-    }
-
-    return result;
-  }
-
-  function handleClick(r, c) {
-    const piece = board[r][c];
-
-    // selecting piece
-    if (!selected) {
-      if (piece) {
-        setSelected({ r, c });
-        setMoves(generateMoves(r, c));
-      }
-      return;
-    }
-
-    // check if clicked move is valid
-    const valid = moves.some(([mr, mc]) => mr === r && mc === c);
-
-    if (valid) {
-      const newBoard = board.map(row => [...row]);
-
-      newBoard[r][c] = board[selected.r][selected.c];
-      newBoard[selected.r][selected.c] = null;
-
-      setBoard(newBoard);
-    }
-
+  const restartGame = () => {
+    const color = window.confirm("Click OK for White, Cancel for Black") ? 'w' : 'b';
+    setUserColor(color);
+    setGame(new Chess());
     setSelected(null);
-    setMoves([]);
+    setValidMoves([]);
+
+    // If user is black, engine (white) moves first
+    if (color === 'b') {
+      triggerEngineMove(new Chess());
+    }
+  };
+
+  const triggerEngineMove = async (currentGame) => {
+    setIsEngineThinking(true);
+    try {
+      const fen = currentGame.fen();
+      const bestMove = await getBestMove(fen);
+
+      // C engine returns "fromRow,fromCol,toRow,toCol" (0-7)
+      // chess.js expects "e2e4"
+      const files = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'];
+      const fromFile = files[bestMove.fromCol];
+      const fromRank = 8 - bestMove.fromRow;
+      const toFile = files[bestMove.toCol];
+      const toRank = 8 - bestMove.toRow;
+      const notation = `${fromFile}${fromRank}${toFile}${toRank}`;
+
+      const newGame = new Chess(currentGame.fen());
+      newGame.move(notation);
+      setGame(newGame);
+    } catch (e) {
+      console.error("Engine move failed:", e);
+    } finally {
+      setIsEngineThinking(false);
+    }
+  };
+
+  const handleClick = async (r, c) => {
+    if (isEngineThinking || !userColor) return;
+
+    const square = `${filesToCoord(c)}${8 - r}`;
+
+    // If a piece is already selected, try to move it
+    if (selected) {
+      try {
+        const move = game.move({
+          from: selected,
+          to: square,
+          promotion: 'q' // always promote to queen for simplicity
+        });
+
+        if (move) {
+          setGame(new Chess(game.fen()));
+          setSelected(null);
+          setValidMoves([]);
+
+          // It's now engine's turn
+          if (game.turn() !== userColor) {
+            await triggerEngineMove(game);
+          }
+          return;
+        }
+      } catch (e) {
+        // invalid move
+      }
+    }
+
+    // Selecting a piece
+    const piece = game.get(square);
+    if (piece && piece.color === userColor) {
+      setSelected(square);
+      const moves = game.moves({ square });
+      setValidMoves(moves);
+    } else {
+      setSelected(null);
+      setValidMoves([]);
+    }
+  };
+
+  const filesToCoord = (col) => ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'][col];
+
+  const isSquareValidMove = (r, c) => {
+    const square = `${filesToCoord(c)}${8 - r}`;
+    return validMoves.some(m => m.endsWith(square));
+  };
+
+  if (!userColor) {
+    return (
+      <div style={{ textAlign: 'center', marginTop: '20px' }}>
+        <button onClick={restartGame} style={{ padding: '10px 20px', fontSize: '16px' }}>
+          Start Game (Choose Color)
+        </button>
+      </div>
+    );
   }
+
+  const currentBoard = renderBoard();
 
   return (
-    <div className="board">
-      {board.map((row, i) =>
-        row.map((piece, j) => {
-          const isWhiteSquare = (i + j) % 2 === 0;
+    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '20px' }}>
+      <div style={{ display: 'flex', gap: '10px' }}>
+        <button onClick={restartGame}>Restart Game</button>
+        <span>{isEngineThinking ? "Engine is thinking..." : game.turn() === userColor ? "Your turn" : "Engine's turn"}</span>
+      </div>
+      <div className="board">
+        {currentBoard.map((row, i) =>
+          row.map((piece, j) => {
+            const isWhiteSquare = (i + j) % 2 === 0;
+            const squareNotation = `${filesToCoord(j)}${8 - i}`;
+            const isSelected = selected === squareNotation;
+            const isMove = isSquareValidMove(i, j);
 
-          const isSelected =
-            selected && selected.r === i && selected.c === j;
-
-          const isMove = moves.some(([r, c]) => r === i && c === j);
-
-          return (
-            <Square
-              key={`${i}-${j}`}
-              piece={piece}
-              isWhite={isWhiteSquare}
-              isSelected={isSelected}
-              isMove={isMove}
-              onClick={() => handleClick(i, j)}
-            />
-          );
-        })
-      )}
+            return (
+              <Square
+                key={`${i}-${j}`}
+                piece={piece}
+                isWhite={isWhiteSquare}
+                isSelected={isSelected}
+                isMove={isMove}
+                onClick={() => handleClick(i, j)}
+              />
+            );
+          })
+        )}
+      </div>
     </div>
   );
 }
