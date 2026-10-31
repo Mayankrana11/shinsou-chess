@@ -63,3 +63,5 @@ temp
 # Uncomment if you don’t want to track lock files
 # package-lock.json
 # yarn.lock
+
+/emsdk
