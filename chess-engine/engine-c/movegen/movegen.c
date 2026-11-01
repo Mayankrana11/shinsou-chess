@@ -25,10 +25,18 @@ void addMove(Move moves[], int* count, int fr, int fc, int tr, int tc, int piece
 }
 
 int generatePseudoLegalMoves(Position* pos, Move moves[]) {
+    if (pos->allPieces == 0) {
+        syncBitboards(pos);
+    }
     int count = 0;
     int side = pos->sideToMove;
     uint64_t myPieces = (side == WHITE) ? pos->whitePieces : pos->blackPieces;
     uint64_t allPieces = pos->allPieces;
+
+    int promoQ = (side == WHITE) ? WQUEEN  : BQUEEN;
+    int promoR = (side == WHITE) ? WROOK   : BROOK;
+    int promoB = (side == WHITE) ? WBISHOP : BBISHOP;
+    int promoN = (side == WHITE) ? WKNIGHT : BKNIGHT;
 
     /* 1. Pawn Moves */
     uint64_t pawns = pos->pawns & myPieces;
@@ -48,10 +56,10 @@ int generatePseudoLegalMoves(Position* pos, Move moves[]) {
         if (inBounds(nr, c)) {
             if (pos->board[nr][c] == EMPTY) {
                 if (nr == promotionRow) {
-                    addMove(moves, &count, r, c, nr, c, piece, EMPTY, WQUEEN, MOVE_PROMOTION);
-                    addMove(moves, &count, r, c, nr, c, piece, EMPTY, WROOK, MOVE_PROMOTION);
-                    addMove(moves, &count, r, c, nr, c, piece, EMPTY, WBISHOP, MOVE_PROMOTION);
-                    addMove(moves, &count, r, c, nr, c, piece, EMPTY, WKNIGHT, MOVE_PROMOTION);
+                    addMove(moves, &count, r, c, nr, c, piece, EMPTY, promoQ, MOVE_PROMOTION);
+                    addMove(moves, &count, r, c, nr, c, piece, EMPTY, promoR, MOVE_PROMOTION);
+                    addMove(moves, &count, r, c, nr, c, piece, EMPTY, promoB, MOVE_PROMOTION);
+                    addMove(moves, &count, r, c, nr, c, piece, EMPTY, promoN, MOVE_PROMOTION);
                 } else {
                     addMove(moves, &count, r, c, nr, c, piece, EMPTY, 0, MOVE_NORMAL);
                     if (r == pawnStartRow && inBounds(r + 2 * pawnDir, c) && pos->board[r + 2 * pawnDir][c] == EMPTY) {
@@ -68,14 +76,14 @@ int generatePseudoLegalMoves(Position* pos, Move moves[]) {
                 int target = pos->board[nr][nc];
                 if (target != EMPTY && !sameColor(piece, target)) {
                     if (nr == promotionRow) {
-                        addMove(moves, &count, r, c, nr, nc, piece, target, WQUEEN, MOVE_PROMOTION);
-                        addMove(moves, &count, r, c, nr, nc, piece, target, WROOK, MOVE_PROMOTION);
-                        addMove(moves, &count, r, c, nr, nc, piece, target, WBISHOP, MOVE_PROMOTION);
-                        addMove(moves, &count, r, c, nr, nc, piece, target, WKNIGHT, MOVE_PROMOTION);
+                        addMove(moves, &count, r, c, nr, nc, piece, target, promoQ, MOVE_PROMOTION);
+                        addMove(moves, &count, r, c, nr, nc, piece, target, promoR, MOVE_PROMOTION);
+                        addMove(moves, &count, r, c, nr, nc, piece, target, promoB, MOVE_PROMOTION);
+                        addMove(moves, &count, r, c, nr, nc, piece, target, promoN, MOVE_PROMOTION);
                     } else {
                         addMove(moves, &count, r, c, nr, nc, piece, target, 0, MOVE_NORMAL);
                     }
-                } else if (nr == pos->enPassantRow && nc == pos->enPassantCol) {
+                } else if (pos->enPassantRow >= 0 && nr == pos->enPassantRow && nc == pos->enPassantCol) {
                     addMove(moves, &count, r, c, nr, nc, piece, (side == WHITE) ? BPAWN : WPAWN, 0, MOVE_EN_PASSANT);
                 }
             }
@@ -169,24 +177,24 @@ int generatePseudoLegalMoves(Position* pos, Move moves[]) {
     int enemyColor = (side == WHITE) ? BLACK : WHITE;
 
     if (!isInCheck(pos, side)) {
-        if (side == WHITE && kingRow == RANK_1 && kingCol == 4) {
-            if ((rights & CASTLE_WHITE_KINGSIDE) && pos->board[RANK_1][5] == EMPTY && pos->board[RANK_1][6] == EMPTY) {
+        if (side == WHITE && kingRow == RANK_1 && kingCol == 4 && pos->board[RANK_1][4] == WKING) {
+            if ((rights & CASTLE_WHITE_KINGSIDE) && pos->board[RANK_1][7] == WROOK && pos->board[RANK_1][5] == EMPTY && pos->board[RANK_1][6] == EMPTY) {
                 if (!isSquareAttacked(pos, RANK_1, 5, enemyColor) && !isSquareAttacked(pos, RANK_1, 6, enemyColor)) {
                     addMove(moves, &count, RANK_1, 4, RANK_1, 6, WKING, EMPTY, 0, MOVE_CASTLE_KINGSIDE);
                 }
             }
-            if ((rights & CASTLE_WHITE_QUEENSIDE) && pos->board[RANK_1][3] == EMPTY && pos->board[RANK_1][2] == EMPTY && pos->board[RANK_1][1] == EMPTY) {
+            if ((rights & CASTLE_WHITE_QUEENSIDE) && pos->board[RANK_1][0] == WROOK && pos->board[RANK_1][3] == EMPTY && pos->board[RANK_1][2] == EMPTY && pos->board[RANK_1][1] == EMPTY) {
                 if (!isSquareAttacked(pos, RANK_1, 3, enemyColor) && !isSquareAttacked(pos, RANK_1, 2, enemyColor)) {
                     addMove(moves, &count, RANK_1, 4, RANK_1, 2, WKING, EMPTY, 0, MOVE_CASTLE_QUEENSIDE);
                 }
             }
-        } else if (side == BLACK && kingRow == RANK_8 && kingCol == 4) {
-            if ((rights & CASTLE_BLACK_KINGSIDE) && pos->board[RANK_8][5] == EMPTY && pos->board[RANK_8][6] == EMPTY) {
+        } else if (side == BLACK && kingRow == RANK_8 && kingCol == 4 && pos->board[RANK_8][4] == BKING) {
+            if ((rights & CASTLE_BLACK_KINGSIDE) && pos->board[RANK_8][7] == BROOK && pos->board[RANK_8][5] == EMPTY && pos->board[RANK_8][6] == EMPTY) {
                 if (!isSquareAttacked(pos, RANK_8, 5, enemyColor) && !isSquareAttacked(pos, RANK_8, 6, enemyColor)) {
                     addMove(moves, &count, RANK_8, 4, RANK_8, 6, BKING, EMPTY, 0, MOVE_CASTLE_KINGSIDE);
                 }
             }
-            if ((rights & CASTLE_BLACK_QUEENSIDE) && pos->board[RANK_8][3] == EMPTY && pos->board[RANK_8][2] == EMPTY && pos->board[RANK_8][1] == EMPTY) {
+            if ((rights & CASTLE_BLACK_QUEENSIDE) && pos->board[RANK_8][0] == BROOK && pos->board[RANK_8][3] == EMPTY && pos->board[RANK_8][2] == EMPTY && pos->board[RANK_8][1] == EMPTY) {
                 if (!isSquareAttacked(pos, RANK_8, 3, enemyColor) && !isSquareAttacked(pos, RANK_8, 2, enemyColor)) {
                     addMove(moves, &count, RANK_8, 4, RANK_8, 2, BKING, EMPTY, 0, MOVE_CASTLE_QUEENSIDE);
                 }
