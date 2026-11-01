@@ -2,7 +2,7 @@ CC = gcc
 CFLAGS = -Wall -Wextra -Wpedantic -std=c11 -I. -I../../
 TARGET = test_fen.exe
 
-SRC = ../board/board.c ../fen/fen.c ../movegen/movegen.c test_fen.c
+SRC = ../board/board.c ../fen/fen.c ../movegen/movegen.c ../movegen/attacks.c test_fen.c
 
 all: $(TARGET)
 

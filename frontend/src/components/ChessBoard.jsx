@@ -64,13 +64,14 @@ export default function ChessBoard() {
       const fromRank = 8 - bestMove.fromRow;
       const toFile = files[bestMove.toCol];
       const toRank = 8 - bestMove.toRow;
-      const notation = `${fromFile}${fromRank}${toFile}${toRank}`;
+      const from = `${fromFile}${fromRank}`;
+      const to = `${toFile}${toRank}`;
 
       const newGame = new Chess(currentGame.fen());
-      const moveResult = newGame.move(notation);
+      const moveResult = newGame.move({ from, to, promotion: 'q' });
 
       if (!moveResult) {
-        throw new Error(`Chess.js rejected move ${notation} as invalid`);
+        throw new Error(`Chess.js rejected move ${from}${to} as invalid`);
       }
 
       setGame(newGame);
