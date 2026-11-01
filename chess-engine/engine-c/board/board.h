@@ -5,6 +5,7 @@
 
 void initBoard(Position* pos);
 void clearBoard(Position* pos);
+void syncBitboards(Position* pos);
 void printBoard(Position* pos);
 void copyPosition(Position* dst, const Position* src);
 int findKing(Position* pos, int color);

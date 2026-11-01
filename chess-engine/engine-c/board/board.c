@@ -14,10 +14,75 @@ uint64_t piece_sq[12][8][8];
 uint64_t side_key;
 uint64_t castle_keys[4];
 uint64_t ep_keys[8];
+static int zobrist_initialized = 0;
 
 static int pieceToZIndex(int p) {
     if (p == 0) return -1;
     return (p > 0) ? (p - 1) : (abs(p) + 5);
+}
+
+static inline void bbRemovePiece(Position* pos, int piece, int sq) {
+    clear_bit(&pos->allPieces, sq);
+    if (piece > 0) clear_bit(&pos->whitePieces, sq);
+    else clear_bit(&pos->blackPieces, sq);
+
+    int type = (piece > 0) ? piece : -piece;
+    switch (type) {
+        case WPAWN:   clear_bit(&pos->pawns, sq); break;
+        case WKNIGHT: clear_bit(&pos->knights, sq); break;
+        case WBISHOP: clear_bit(&pos->bishops, sq); break;
+        case WROOK:   clear_bit(&pos->rooks, sq); break;
+        case WQUEEN:  clear_bit(&pos->queens, sq); break;
+        case WKING:   clear_bit(&pos->kings, sq); break;
+    }
+}
+
+static inline void bbAddPiece(Position* pos, int piece, int sq) {
+    set_bit(&pos->allPieces, sq);
+    if (piece > 0) set_bit(&pos->whitePieces, sq);
+    else set_bit(&pos->blackPieces, sq);
+
+    int type = (piece > 0) ? piece : -piece;
+    switch (type) {
+        case WPAWN:   set_bit(&pos->pawns, sq); break;
+        case WKNIGHT: set_bit(&pos->knights, sq); break;
+        case WBISHOP: set_bit(&pos->bishops, sq); break;
+        case WROOK:   set_bit(&pos->rooks, sq); break;
+        case WQUEEN:  set_bit(&pos->queens, sq); break;
+        case WKING:   set_bit(&pos->kings, sq); break;
+    }
+}
+
+void syncBitboards(Position* pos) {
+    if (!zobrist_initialized) {
+        initZobrist();
+    }
+    pos->whitePieces = 0;
+    pos->blackPieces = 0;
+    pos->allPieces = 0;
+    pos->pawns = 0;
+    pos->knights = 0;
+    pos->bishops = 0;
+    pos->rooks = 0;
+    pos->queens = 0;
+    pos->kings = 0;
+
+    for (int r = 0; r < 8; r++) {
+        for (int c = 0; c < 8; c++) {
+            int piece = pos->board[r][c];
+            if (piece != EMPTY) {
+                int sq = square_to_index(r, c);
+                bbAddPiece(pos, piece, sq);
+                if (piece == WKING) {
+                    pos->whiteKingRow = r;
+                    pos->whiteKingCol = c;
+                } else if (piece == BKING) {
+                    pos->blackKingRow = r;
+                    pos->blackKingCol = c;
+                }
+            }
+        }
+    }
 }
 
 char pieceChar(int p) {
@@ -54,6 +119,8 @@ void clearBoard(Position* pos) {
     pos->rooks = 0;
     pos->queens = 0;
     pos->kings = 0;
+    pos->enPassantRow = -1;
+    pos->enPassantCol = -1;
 }
 
 void initBoard(Position* pos) {
@@ -71,24 +138,7 @@ void initBoard(Position* pos) {
     clearBoard(pos);
     for(int i=0;i<8;i++) {
         for(int j=0;j<8;j++) {
-            int piece = start[i][j];
-            pos->board[i][j] = piece;
-            if (piece != EMPTY) {
-                int sq = square_to_index(i, j);
-                if (piece > 0) set_bit(&pos->whitePieces, sq);
-                else set_bit(&pos->blackPieces, sq);
-                set_bit(&pos->allPieces, sq);
-
-                int type = (piece > 0) ? piece : -piece;
-                switch (type) {
-                    case WPAWN: set_bit(&pos->pawns, sq); break;
-                    case WKNIGHT: set_bit(&pos->knights, sq); break;
-                    case WBISHOP: set_bit(&pos->bishops, sq); break;
-                    case WROOK: set_bit(&pos->rooks, sq); break;
-                    case WQUEEN: set_bit(&pos->queens, sq); break;
-                    case WKING: set_bit(&pos->kings, sq); break;
-                }
-            }
+            pos->board[i][j] = start[i][j];
         }
     }
 
@@ -101,6 +151,9 @@ void initBoard(Position* pos) {
     pos->fullmoveNumber = 1;
     pos->enPassantRow = -1;
     pos->enPassantCol = -1;
+
+    syncBitboards(pos);
+    pos->hash = computeHash(pos);
 }
 
 void printBoard(Position* pos) {
@@ -250,48 +303,26 @@ void makeMove(Position* pos, Move* move) {
     move->prevHalfmoveClock = pos->halfmoveClock;
 
     int piece = pos->board[move->fromRow][move->fromCol];
-    int captured = pos->board[move->toRow][move->toCol];
+    int captured = (move->type == MOVE_EN_PASSANT)
+        ? ((pos->sideToMove == WHITE) ? BPAWN : WPAWN)
+        : pos->board[move->toRow][move->toCol];
     move->piece = piece;
     move->captured = captured;
 
-    /* Update Bitboards */
+    /* Update Bitboards & Hash */
     int fromSq = square_to_index(move->fromRow, move->fromCol);
     int toSq = square_to_index(move->toRow, move->toCol);
 
-    clear_bit(&pos->allPieces, fromSq);
-    if (piece > 0) clear_bit(&pos->whitePieces, fromSq);
-    else clear_bit(&pos->blackPieces, fromSq);
-
-    int pieceType = (piece > 0) ? piece : -piece;
-    switch (pieceType) {
-        case WPAWN: clear_bit(&pos->pawns, fromSq); break;
-        case WKNIGHT: clear_bit(&pos->knights, fromSq); break;
-        case WBISHOP: clear_bit(&pos->bishops, fromSq); break;
-        case WROOK: clear_bit(&pos->rooks, fromSq); break;
-        case WQUEEN: clear_bit(&pos->queens, fromSq); break;
-        case WKING: clear_bit(&pos->kings, fromSq); break;
-    }
-
-    if (captured != EMPTY) {
-        clear_bit(&pos->allPieces, toSq);
-        if (captured > 0) clear_bit(&pos->whitePieces, toSq);
-        else clear_bit(&pos->blackPieces, toSq);
-
-        int capturedType = (captured > 0) ? captured : -captured;
-        switch (capturedType) {
-            case WPAWN: clear_bit(&pos->pawns, toSq); break;
-            case WKNIGHT: clear_bit(&pos->knights, toSq); break;
-            case WBISHOP: clear_bit(&pos->bishops, toSq); break;
-            case WROOK: clear_bit(&pos->rooks, toSq); break;
-            case WQUEEN: clear_bit(&pos->queens, toSq); break;
-            case WKING: clear_bit(&pos->kings, toSq); break;
-        }
-    }
-
-    /* Update Hash incrementally */
     uint64_t h = pos->hash;
+    if (move->prevEnPassantCol != -1) {
+        h ^= ep_keys[move->prevEnPassantCol];
+    }
+
+    bbRemovePiece(pos, piece, fromSq);
     h ^= piece_sq[pieceToZIndex(piece)][move->fromRow][move->fromCol];
-    if (captured != EMPTY) {
+
+    if (captured != EMPTY && move->type != MOVE_EN_PASSANT) {
+        bbRemovePiece(pos, captured, toSq);
         h ^= piece_sq[pieceToZIndex(captured)][move->toRow][move->toCol];
     }
 
@@ -301,49 +332,30 @@ void makeMove(Position* pos, Move* move) {
         int capturedRow = (pos->sideToMove == WHITE) ? move->toRow + 1 : move->toRow - 1;
         pos->board[capturedRow][move->toCol] = EMPTY;
         int epSq = square_to_index(capturedRow, move->toCol);
-        clear_bit(&pos->allPieces, epSq);
-        if (pos->sideToMove == WHITE) clear_bit(&pos->whitePieces, epSq); // This is actually a black pawn
-        else clear_bit(&pos->blackPieces, epSq); // This is actually a white pawn
-        // Correction: EP captures the opposite color pawn
-        if (pos->sideToMove == WHITE) clear_bit(&pos->blackPieces, epSq);
-        else clear_bit(&pos->whitePieces, epSq);
-        clear_bit(&pos->pawns, epSq);
-
-        /* Captured pawn was not at move->toRow, but at capturedRow */
-        h ^= piece_sq[pieceToZIndex(pos->sideToMove == WHITE ? BPAWN : WPAWN)][capturedRow][move->toCol];
+        bbRemovePiece(pos, captured, epSq);
+        h ^= piece_sq[pieceToZIndex(captured)][capturedRow][move->toCol];
     }
 
     int finalPiece = move->promotion ? move->promotion : piece;
     pos->board[move->toRow][move->toCol] = finalPiece;
-    set_bit(&pos->allPieces, toSq);
-    if (finalPiece > 0) set_bit(&pos->whitePieces, toSq);
-    else set_bit(&pos->blackPieces, toSq);
-
-    int finalType = (finalPiece > 0) ? finalPiece : -finalPiece;
-    switch (finalType) {
-        case WPAWN: set_bit(&pos->pawns, toSq); break;
-        case WKNIGHT: set_bit(&pos->knights, toSq); break;
-        case WBISHOP: set_bit(&pos->bishops, toSq); break;
-        case WROOK: set_bit(&pos->rooks, toSq); break;
-        case WQUEEN: set_bit(&pos->queens, toSq); break;
-        case WKING: set_bit(&pos->kings, toSq); break;
-    }
+    bbAddPiece(pos, finalPiece, toSq);
+    h ^= piece_sq[pieceToZIndex(finalPiece)][move->toRow][move->toCol];
 
     if (move->type == MOVE_CASTLE_KINGSIDE) {
         if (pos->sideToMove == WHITE) {
             pos->board[RANK_1][5] = WROOK; pos->board[RANK_1][7] = EMPTY;
             int rSq = square_to_index(RANK_1, 5);
             int oldRSq = square_to_index(RANK_1, 7);
-            set_bit(&pos->allPieces, rSq); set_bit(&pos->whitePieces, rSq); set_bit(&pos->rooks, rSq);
-            clear_bit(&pos->allPieces, oldRSq); clear_bit(&pos->whitePieces, oldRSq); clear_bit(&pos->rooks, oldRSq);
+            bbRemovePiece(pos, WROOK, oldRSq);
+            bbAddPiece(pos, WROOK, rSq);
             h ^= piece_sq[pieceToZIndex(WROOK)][RANK_1][7];
             h ^= piece_sq[pieceToZIndex(WROOK)][RANK_1][5];
         } else {
             pos->board[RANK_8][5] = BROOK; pos->board[RANK_8][7] = EMPTY;
             int rSq = square_to_index(RANK_8, 5);
             int oldRSq = square_to_index(RANK_8, 7);
-            set_bit(&pos->allPieces, rSq); set_bit(&pos->blackPieces, rSq); set_bit(&pos->rooks, rSq);
-            clear_bit(&pos->allPieces, oldRSq); clear_bit(&pos->blackPieces, oldRSq); clear_bit(&pos->rooks, oldRSq);
+            bbRemovePiece(pos, BROOK, oldRSq);
+            bbAddPiece(pos, BROOK, rSq);
             h ^= piece_sq[pieceToZIndex(BROOK)][RANK_8][7];
             h ^= piece_sq[pieceToZIndex(BROOK)][RANK_8][5];
         }
@@ -352,21 +364,20 @@ void makeMove(Position* pos, Move* move) {
             pos->board[RANK_1][3] = WROOK; pos->board[RANK_1][0] = EMPTY;
             int rSq = square_to_index(RANK_1, 3);
             int oldRSq = square_to_index(RANK_1, 0);
-            set_bit(&pos->allPieces, rSq); set_bit(&pos->whitePieces, rSq); set_bit(&pos->rooks, rSq);
-            clear_bit(&pos->allPieces, oldRSq); clear_bit(&pos->whitePieces, oldRSq); clear_bit(&pos->rooks, oldRSq);
+            bbRemovePiece(pos, WROOK, oldRSq);
+            bbAddPiece(pos, WROOK, rSq);
             h ^= piece_sq[pieceToZIndex(WROOK)][RANK_1][0];
             h ^= piece_sq[pieceToZIndex(WROOK)][RANK_1][3];
         } else {
             pos->board[RANK_8][3] = BROOK; pos->board[RANK_8][0] = EMPTY;
             int rSq = square_to_index(RANK_8, 3);
             int oldRSq = square_to_index(RANK_8, 0);
-            set_bit(&pos->allPieces, rSq); set_bit(&pos->blackPieces, rSq); set_bit(&pos->rooks, rSq);
-            clear_bit(&pos->allPieces, oldRSq); clear_bit(&pos->blackPieces, oldRSq); clear_bit(&pos->rooks, oldRSq);
+            bbRemovePiece(pos, BROOK, oldRSq);
+            bbAddPiece(pos, BROOK, rSq);
             h ^= piece_sq[pieceToZIndex(BROOK)][RANK_8][0];
             h ^= piece_sq[pieceToZIndex(BROOK)][RANK_8][3];
         }
     }
-
 
     if (piece == WKING) {
         pos->whiteKingRow = move->toRow; pos->whiteKingCol = move->toCol;
@@ -391,6 +402,12 @@ void makeMove(Position* pos, Move* move) {
         if (move->fromRow == RANK_8 && move->fromCol == 0) pos->blackLeftRookMoved = 1;
         if (move->fromRow == RANK_8 && move->fromCol == 7) pos->blackRightRookMoved = 1;
     }
+
+    /* If a rook is captured on its starting square, revoke that castling right */
+    if (move->toRow == RANK_1 && move->toCol == 0) pos->whiteLeftRookMoved = 1;
+    if (move->toRow == RANK_1 && move->toCol == 7) pos->whiteRightRookMoved = 1;
+    if (move->toRow == RANK_8 && move->toCol == 0) pos->blackLeftRookMoved = 1;
+    if (move->toRow == RANK_8 && move->toCol == 7) pos->blackRightRookMoved = 1;
 
     int ptype = piece > 0 ? piece : -piece;
     if (ptype == WPAWN) {
@@ -428,30 +445,58 @@ void makeMove(Position* pos, Move* move) {
 void undoMove(Position* pos, Move* move) {
     int piece = move->piece;
     int captured = move->captured;
+    int finalPiece = move->promotion ? move->promotion : piece;
+
+    int fromSq = square_to_index(move->fromRow, move->fromCol);
+    int toSq = square_to_index(move->toRow, move->toCol);
+
+    /* Reverse Bitboards for moving/promoted piece */
+    bbRemovePiece(pos, finalPiece, toSq);
+    bbAddPiece(pos, piece, fromSq);
 
     pos->board[move->fromRow][move->fromCol] = piece;
-    pos->board[move->toRow][move->toCol] = captured;
 
     if (move->type == MOVE_EN_PASSANT) {
         int capturedRow = (pos->sideToMove == BLACK) ? move->toRow + 1 : move->toRow - 1;
-        pos->board[capturedRow][move->toCol] = (pos->sideToMove == BLACK) ? BPAWN : WPAWN;
+        int epPawn = (pos->sideToMove == BLACK) ? BPAWN : WPAWN;
+        pos->board[capturedRow][move->toCol] = epPawn;
         pos->board[move->toRow][move->toCol] = EMPTY;
-    } else if (move->type == MOVE_PROMOTION) {
-        pos->board[move->fromRow][move->fromCol] = piece;
+        int epSq = square_to_index(capturedRow, move->toCol);
+        bbAddPiece(pos, epPawn, epSq);
+    } else {
         pos->board[move->toRow][move->toCol] = captured;
+        if (captured != EMPTY) {
+            bbAddPiece(pos, captured, toSq);
+        }
     }
 
     if (move->type == MOVE_CASTLE_KINGSIDE) {
         if (pos->sideToMove == BLACK) {
             pos->board[RANK_1][7] = WROOK; pos->board[RANK_1][5] = EMPTY;
+            int rSq = square_to_index(RANK_1, 5);
+            int oldRSq = square_to_index(RANK_1, 7);
+            bbRemovePiece(pos, WROOK, rSq);
+            bbAddPiece(pos, WROOK, oldRSq);
         } else {
             pos->board[RANK_8][7] = BROOK; pos->board[RANK_8][5] = EMPTY;
+            int rSq = square_to_index(RANK_8, 5);
+            int oldRSq = square_to_index(RANK_8, 7);
+            bbRemovePiece(pos, BROOK, rSq);
+            bbAddPiece(pos, BROOK, oldRSq);
         }
     } else if (move->type == MOVE_CASTLE_QUEENSIDE) {
         if (pos->sideToMove == BLACK) {
             pos->board[RANK_1][0] = WROOK; pos->board[RANK_1][3] = EMPTY;
+            int rSq = square_to_index(RANK_1, 3);
+            int oldRSq = square_to_index(RANK_1, 0);
+            bbRemovePiece(pos, WROOK, rSq);
+            bbAddPiece(pos, WROOK, oldRSq);
         } else {
             pos->board[RANK_8][0] = BROOK; pos->board[RANK_8][3] = EMPTY;
+            int rSq = square_to_index(RANK_8, 3);
+            int oldRSq = square_to_index(RANK_8, 0);
+            bbRemovePiece(pos, BROOK, rSq);
+            bbAddPiece(pos, BROOK, oldRSq);
         }
     }
 
@@ -501,6 +546,8 @@ int isTerminal(Position* pos, int* result) {
 }
 
 void initZobrist() {
+    if (zobrist_initialized) return;
+    zobrist_initialized = 1;
     srand(time(NULL));
     init_attacks();
     for (int i = 0; i < 12; i++) {
