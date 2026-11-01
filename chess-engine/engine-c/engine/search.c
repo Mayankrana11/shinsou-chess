@@ -9,7 +9,7 @@
 #include <stdint.h>
 
 #define MATE_SCORE 100000
-#define NULL_MOVE_REDUCTION 100
+#define NULL_MOVE_REDUCTION 2
 #define FUTILITY_THRESHOLD 150
 
 /* Forward declaration of quiescence search */
@@ -63,23 +63,25 @@ int search(Position* pos, int depth, int alpha, int beta, int ply) {
         if (entry->flag == UPPERBOUND && entry->score <= alpha) return entry->score;
     }
 
-    if (depth == 0) {
+    if (depth <= 0) {
         return quiesce(pos, alpha, beta);
     }
 
+    int inCheck = isInCheck(pos, pos->sideToMove);
+
     /* 2. Null Move Pruning (NMP) */
-    /* Apply NMP at depths > 3 and not in late game.
-       If the side to move can pass and still have a score >= beta, prune. */
-    if (depth >= 3 && !isInCheck(pos, pos->sideToMove)) {
+    /* Apply NMP at non-PV nodes (beta - alpha == 1) at depths >= 3 when not in check. */
+    if (depth >= 3 && !inCheck && ply > 0 && (beta - alpha == 1) && beta < MATE_SCORE - 100 && alpha > -MATE_SCORE + 100) {
         Position nullPos = *pos;
         nullPos.sideToMove = -pos->sideToMove;
+        nullPos.enPassantRow = -1;
+        nullPos.enPassantCol = -1;
         nullPos.halfmoveClock++;
-        // A simple hash update for null move (side change)
-        nullPos.hash ^= side_key;
+        nullPos.hash = computeHash(&nullPos);
 
-        int nullScore = -search(&nullPos, depth - 1 - NULL_MOVE_REDUCTION, -beta, -alpha, ply + 1);
+        int nullScore = -search(&nullPos, depth - 1 - NULL_MOVE_REDUCTION, -beta, -beta + 1, ply + 1);
         if (nullScore >= beta) {
-            return beta;
+            return nullScore;
         }
     }
 
@@ -87,7 +89,7 @@ int search(Position* pos, int depth, int alpha, int beta, int ply) {
     int moveCount = generateLegalMoves(pos, moves);
 
     if (moveCount == 0) {
-        if (isInCheck(pos, pos->sideToMove)) {
+        if (inCheck) {
             return -MATE_SCORE + ply;
         } else {
             return 0;
@@ -95,20 +97,32 @@ int search(Position* pos, int depth, int alpha, int beta, int ply) {
     }
 
     scoreMoves(moves, moveCount, ply, pos->sideToMove);
+    if (entry) {
+        for (int i = 0; i < moveCount; i++) {
+            if (moves[i].fromRow == entry->bestMove.fromRow &&
+                moves[i].fromCol == entry->bestMove.fromCol &&
+                moves[i].toRow == entry->bestMove.toRow &&
+                moves[i].toCol == entry->bestMove.toCol &&
+                moves[i].promotion == entry->bestMove.promotion) {
+                moves[i].score = 30000000;
+                break;
+            }
+        }
+    }
 
     int bestScore = -2000000;
     Move bestMove = moves[0];
     int alphaOrig = alpha;
     int firstMove = 1;
+    int staticEval = (depth == 1 && !inCheck) ? (evaluate(pos) * pos->sideToMove) : 0;
 
     for (int i = 0; i < moveCount; i++) {
         pickBestMove(moves, moveCount, i);
 
-        /* 3. Futility Pruning */
-        /* If the move is too bad to possibly reach alpha, prune it. */
-        if (depth >= 3 && moves[i].captured == EMPTY && moves[i].type != MOVE_PROMOTION) {
-            int staticEval = evaluate(pos); // Simplified static eval for futility
-            if (staticEval - FUTILITY_THRESHOLD <= alpha) {
+        /* 3. Futility Pruning (frontier nodes, after searching at least one move) */
+        if (!firstMove && depth == 1 && !inCheck &&
+            moves[i].captured == EMPTY && moves[i].type != MOVE_PROMOTION) {
+            if (staticEval + FUTILITY_THRESHOLD <= alpha) {
                 continue;
             }
         }
@@ -123,8 +137,8 @@ int search(Position* pos, int depth, int alpha, int beta, int ply) {
             currentBeta = alpha + 1;
 
             /* LMR: Reduce depth for moves searched late */
-            if (i > 3 && depth >= 3 && moves[i].captured == EMPTY && moves[i].type != MOVE_PROMOTION) {
-                searchDepth -= 2; // Simple reduction
+            if (i > 3 && depth >= 3 && !inCheck && moves[i].captured == EMPTY && moves[i].type != MOVE_PROMOTION) {
+                searchDepth -= 1; // 1-ply reduction
             }
         }
 
@@ -174,7 +188,7 @@ int search(Position* pos, int depth, int alpha, int beta, int ply) {
 
 static int quiesce(Position* pos, int alpha, int beta) {
     int standPat = evaluate(pos) * pos->sideToMove;
-    if (standPat >= beta) return beta;
+    if (standPat >= beta) return standPat;
     if (standPat > alpha) alpha = standPat;
 
     Move moves[MAX_MOVES];
@@ -183,7 +197,7 @@ static int quiesce(Position* pos, int alpha, int beta) {
 
     scoreCaptures(moves, moveCount);
 
-    int bestScore = -2000000;
+    int bestScore = standPat;
     for (int i = 0; i < moveCount; i++) {
         pickBestMove(moves, moveCount, i);
         makeMove(pos, &moves[i]);
@@ -193,11 +207,11 @@ static int quiesce(Position* pos, int alpha, int beta) {
         if (score > bestScore) {
             bestScore = score;
         }
-        if (bestScore >= beta) return beta;
+        if (bestScore >= beta) return bestScore;
         if (bestScore > alpha) alpha = bestScore;
     }
 
-    return (bestScore > standPat) ? bestScore : standPat;
+    return bestScore;
 }
 
 /* ========================================================
@@ -209,21 +223,47 @@ int findBestMove(Position* pos, int depth, Move* bestMove) {
     int moveCount = generateLegalMoves(pos, moves);
     if (moveCount == 0) return 0;
 
-    scoreMoves(moves, moveCount, 0, pos->sideToMove);
-
-    int bestScore = -2000000;
     Move currentBestMove = moves[0];
+    int bestScore = -2000000;
 
-    for (int i = 0; i < moveCount; i++) {
-        pickBestMove(moves, moveCount, i);
-        makeMove(pos, &moves[i]);
-        int score = -search(pos, depth - 1, -2000000, 2000000, 1);
-        undoMove(pos, &moves[i]);
-
-        if (score > bestScore) {
-            bestScore = score;
-            currentBestMove = moves[i];
+    /* Iterative Deepening (1 .. depth) */
+    for (int d = 1; d <= depth; d++) {
+        scoreMoves(moves, moveCount, 0, pos->sideToMove);
+        if (d > 1) {
+            for (int i = 0; i < moveCount; i++) {
+                if (moves[i].fromRow == currentBestMove.fromRow &&
+                    moves[i].fromCol == currentBestMove.fromCol &&
+                    moves[i].toRow == currentBestMove.toRow &&
+                    moves[i].toCol == currentBestMove.toCol &&
+                    moves[i].promotion == currentBestMove.promotion) {
+                    moves[i].score = 30000000;
+                    break;
+                }
+            }
         }
+
+        int iterBestScore = -2000000;
+        Move iterBestMove = moves[0];
+        int alpha = -2000000;
+        int beta = 2000000;
+
+        for (int i = 0; i < moveCount; i++) {
+            pickBestMove(moves, moveCount, i);
+            makeMove(pos, &moves[i]);
+            int score = -search(pos, d - 1, -beta, -alpha, 1);
+            undoMove(pos, &moves[i]);
+
+            if (score > iterBestScore) {
+                iterBestScore = score;
+                iterBestMove = moves[i];
+            }
+            if (score > alpha) {
+                alpha = score;
+            }
+        }
+
+        currentBestMove = iterBestMove;
+        bestScore = iterBestScore;
     }
 
     if (bestMove) *bestMove = currentBestMove;

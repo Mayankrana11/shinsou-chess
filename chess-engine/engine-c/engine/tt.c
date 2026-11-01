@@ -19,8 +19,8 @@ TTEntry* ttProbe(uint64_t hash) {
 void ttStore(uint64_t hash, int depth, int score, TTFlag flag, Move bestMove) {
     uint64_t index = hash % TT_SIZE;
 
-    /* Replace if depth is better or if it's a fresh entry */
-    if (tt[index].hash == 0 || depth > tt[index].depth) {
+    /* Replace if depth is at least as deep or if it's a fresh entry */
+    if (tt[index].hash == 0 || depth >= tt[index].depth) {
         tt[index].hash = hash;
         tt[index].depth = depth;
         tt[index].score = score;
