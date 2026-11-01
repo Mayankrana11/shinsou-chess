@@ -90,31 +90,34 @@ int parseFEN(Position* pos, const char* fen) {
     if (*p == '-') {
         pos->enPassantRow = -1;
         pos->enPassantCol = -1;
+        p++;
     } else {
         pos->enPassantCol = *p - 'a';
         pos->enPassantRow = 8 - (*(p + 1) - '0');
+        p += 2;
     }
-    p += 2;
-    p++; // skip space
+    if (*p == ' ') p++; // skip space
 
     // 5. Halfmove Clock
     pos->halfmoveClock = 0;
-    while (isdigit(*p)) {
+    while (isdigit((unsigned char)*p)) {
         pos->halfmoveClock = pos->halfmoveClock * 10 + (*p - '0');
         p++;
     }
-    p++; // skip space
+    if (*p == ' ') p++; // skip space
 
     // 6. Fullmove Number
     pos->fullmoveNumber = 0;
-    while (isdigit(*p)) {
+    while (isdigit((unsigned char)*p)) {
         pos->fullmoveNumber = pos->fullmoveNumber * 10 + (*p - '0');
         p++;
     }
 
-    // Update king positions
+    // Update king positions and bitboards
     findKing(pos, WHITE);
     findKing(pos, BLACK);
+    syncBitboards(pos);
+    pos->hash = computeHash(pos);
 
     return 1;
 }
