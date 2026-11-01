@@ -53,7 +53,8 @@ WASM_CFLAGS = -O3 -std=c11 -I. -Iboard -Imovegen -Ifen -Iengine -Iutils
 WASM_TARGET = ../../frontend/public/engine/engine.js
 WASM_FLAGS = -s EXPORTED_FUNCTIONS="['_get_best_move']" \
              -s EXPORTED_RUNTIME_METHODS="['ccall', 'cwrap']" \
-             -s MODULARIZE=1 -s EXPORT_NAME="createEngineModule"
+             -s MODULARIZE=1 -s EXPORT_NAME="createEngineModule" \
+             -s STACK_SIZE=5242880 -s ALLOW_MEMORY_GROWTH=1
 
 wasm: $(CORE_SRC) wasm_bridge.c
 	$(EMCC) $(WASM_CFLAGS) $(CORE_SRC) wasm_bridge.c $(WASM_FLAGS) -o $(WASM_TARGET)
